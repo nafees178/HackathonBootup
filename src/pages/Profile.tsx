@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { toast } from "sonner";
 import { User, Star, CheckCircle, TrendingUp, Edit, MapPin, Phone, Globe, Github, Linkedin, Twitter, Briefcase, GraduationCap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDistanceToNow } from "date-fns";
 
 interface Profile {
   username: string;
@@ -23,9 +24,25 @@ interface Profile {
   completed_deals: number;
 }
 
+interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  reviewer: {
+    username: string;
+  };
+  deals: {
+    requests: {
+      title: string;
+    };
+  };
+}
+
 const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<string[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -71,7 +88,26 @@ const Profile = () => {
 
       if (badgesError) throw badgesError;
 
+      // Fetch reviews
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from("reviews")
+        .select(`
+          id,
+          rating,
+          comment,
+          created_at,
+          reviewer:profiles!reviews_reviewer_id_fkey(username),
+          deals!inner(
+            requests!inner(title)
+          )
+        `)
+        .eq("reviewee_id", session.user.id)
+        .order("created_at", { ascending: false });
+
+      if (reviewsError) throw reviewsError;
+
       setProfile(profileData);
+      setReviews(reviewsData || []);
       setFormData({
         full_name: profileData.full_name || "",
         bio: profileData.bio || "",
@@ -379,6 +415,47 @@ const Profile = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground whitespace-pre-line">{(profile as any).education}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {reviews.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Star className="h-5 w-5" />
+                Reviews ({reviews.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {reviews.map((review) => (
+                <div key={review.id} className="border-b last:border-0 pb-4 last:pb-0">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <p className="font-semibold">{review.reviewer.username}</p>
+                      <p className="text-sm text-muted-foreground">{review.deals.requests.title}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-4 w-4 ${
+                            star <= review.rating
+                              ? "fill-yellow-500 text-yellow-500"
+                              : "text-muted-foreground"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  {review.comment && (
+                    <p className="text-sm text-muted-foreground">{review.comment}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {formatDistanceToNow(new Date(review.created_at), { addSuffix: true })}
+                  </p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}

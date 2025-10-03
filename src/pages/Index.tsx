@@ -5,7 +5,7 @@ import { RequestCard } from "@/components/RequestCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, TrendingUp, MessageSquare, User, Star, CheckCircle, Award, ArrowRight, ListChecks } from "lucide-react";
+import { Plus, TrendingUp, MessageSquare, User, Star, CheckCircle, Award, ArrowRight, ListChecks, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Request {
@@ -119,7 +119,7 @@ const Index = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <Link to="/create-request" className="block">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
                 <CardContent className="pt-6">
@@ -130,6 +130,22 @@ const Index = () => {
                     <div>
                       <h3 className="font-semibold text-lg">Post Request</h3>
                       <p className="text-sm text-muted-foreground">Share what you need</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/your-requests" className="block">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-secondary/10 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-secondary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Your Requests</h3>
+                      <p className="text-sm text-muted-foreground">View your posts</p>
                     </div>
                   </div>
                 </CardContent>

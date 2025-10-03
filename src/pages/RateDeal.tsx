@@ -47,6 +47,21 @@ export default function RateDeal() {
 
       if (error) throw error;
 
+      // Check if deal is in a state that can be rated (active with all tasks completed, or cancelled)
+      const canRate = 
+        (data.status === "active" && 
+         data.requester_task_completed && 
+         data.accepter_task_completed && 
+         data.requester_verified_accepter && 
+         data.accepter_verified_requester) ||
+        data.status === "cancelled";
+
+      if (!canRate) {
+        toast.error("This deal is not ready to be rated yet");
+        navigate("/active-deals");
+        return;
+      }
+
       setDeal(data);
       const isRequester = data.requester_id === session.user.id;
       setOtherParty(isRequester ? data.accepter_profile : data.requester_profile);
@@ -77,49 +92,80 @@ export default function RateDeal() {
 
       if (reviewError) throw reviewError;
 
-      // Update deal status to completed
-      const { error: dealError } = await supabase
-        .from("deals")
-        .update({ 
-          status: "completed",
-          completed_at: new Date().toISOString()
-        })
-        .eq("id", dealId);
+      // Update deal status to completed (only if not already cancelled)
+      if (deal.status !== "cancelled") {
+        const { error: dealError } = await supabase
+          .from("deals")
+          .update({ 
+            status: "completed",
+            completed_at: new Date().toISOString()
+          })
+          .eq("id", dealId);
 
-      if (dealError) throw dealError;
+        if (dealError) throw dealError;
+      }
 
-      // Update both users' profiles
-      const profiles = [otherParty.id, currentUserId];
-      for (const profileId of profiles) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("total_deals, completed_deals, reputation_score")
-          .eq("id", profileId)
-          .single();
+      // Calculate and update reviewee's reputation based on all their reviews
+      const { data: allReviews } = await supabase
+        .from("reviews")
+        .select("rating")
+        .eq("reviewee_id", otherParty.id);
 
-        if (profile) {
-          const updates: any = {
-            total_deals: (profile.total_deals || 0) + 1,
-            completed_deals: (profile.completed_deals || 0) + 1,
-          };
+      let newReputation = 0;
+      if (allReviews && allReviews.length > 0) {
+        const avgRating = allReviews.reduce((sum, r) => sum + r.rating, 0) / allReviews.length;
+        newReputation = Math.round(avgRating * 20); // Scale to 0-100
+      }
 
-          // Add reputation points only to the reviewee
-          if (profileId === otherParty.id) {
-            updates.reputation_score = (profile.reputation_score || 0) + (rating * 2);
-          }
+      // Update reviewee's profile with new reputation
+      await supabase
+        .from("profiles")
+        .update({ reputation_score: newReputation })
+        .eq("id", otherParty.id);
 
-          await supabase
+      // Check if both users have rated each other
+      const { data: existingReviews } = await supabase
+        .from("reviews")
+        .select("*")
+        .eq("deal_id", dealId);
+
+      const bothRated = existingReviews && existingReviews.length === 2;
+
+      if (bothRated) {
+        // Update both users' deal counts
+        const profiles = [deal.requester_id, deal.accepter_id];
+        for (const profileId of profiles) {
+          const { data: profile } = await supabase
             .from("profiles")
-            .update(updates)
-            .eq("id", profileId);
+            .select("total_deals, completed_deals")
+            .eq("id", profileId)
+            .single();
+
+          if (profile) {
+            const updates: any = {
+              total_deals: (profile.total_deals || 0) + 1,
+            };
+
+            // Only increment completed_deals if the deal wasn't cancelled
+            if (deal.status !== "cancelled") {
+              updates.completed_deals = (profile.completed_deals || 0) + 1;
+            }
+
+            await supabase
+              .from("profiles")
+              .update(updates)
+              .eq("id", profileId);
+          }
         }
       }
 
-      // Update request status
-      await supabase
-        .from("requests")
-        .update({ status: "completed" })
-        .eq("id", deal.request_id);
+      // Update request status (only if not cancelled)
+      if (deal.status !== "cancelled") {
+        await supabase
+          .from("requests")
+          .update({ status: "completed" })
+          .eq("id", deal.request_id);
+      }
 
       toast.success("Rating submitted successfully!");
       navigate("/active-deals");

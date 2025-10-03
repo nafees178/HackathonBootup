@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
@@ -27,6 +26,8 @@ interface Deal {
   requester_verified_accepter: boolean;
   accepter_verified_requester: boolean;
   prerequisite_completed: boolean;
+  cancellation_requested_by: string | null;
+  cancellation_agreed: boolean;
   created_at: string;
   request_id: string;
   requester_id: string;
@@ -49,6 +50,7 @@ interface Deal {
     username: string;
     reputation_score: number;
   };
+  reviews?: Array<{ reviewer_id: string }>;
 }
 
 export default function ActiveDeals() {
@@ -91,7 +93,19 @@ export default function ActiveDeals() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setDeals(data as any || []);
+
+      // Fetch reviews for each deal to check if user has already rated
+      const dealsWithReviews = await Promise.all(
+        (data || []).map(async (deal) => {
+          const { data: reviews } = await supabase
+            .from("reviews")
+            .select("reviewer_id")
+            .eq("deal_id", deal.id);
+          return { ...deal, reviews: reviews || [] };
+        })
+      );
+
+      setDeals(dealsWithReviews as any);
     } catch (error) {
       console.error("Error fetching active deals:", error);
     } finally {
@@ -99,7 +113,7 @@ export default function ActiveDeals() {
     }
   };
 
-  const handleTaskCompletion = async (dealId: string, isRequester: boolean) => {
+  const handleMarkComplete = async (dealId: string, isRequester: boolean) => {
     try {
       const field = isRequester ? "requester_task_completed" : "accepter_task_completed";
       const { error } = await supabase
@@ -109,14 +123,14 @@ export default function ActiveDeals() {
 
       if (error) throw error;
 
-      toast.success("Task marked as complete! Waiting for verification.");
+      toast.success("Your task marked as complete!");
       fetchActiveDeals();
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
-  const handleVerifyTask = async (dealId: string, isRequester: boolean) => {
+  const handleVerify = async (dealId: string, isRequester: boolean) => {
     try {
       const verifyField = isRequester ? "requester_verified_accepter" : "accepter_verified_requester";
       const { error } = await supabase
@@ -126,21 +140,21 @@ export default function ActiveDeals() {
 
       if (error) throw error;
 
-      // Check if both verified and both tasks complete
-      const deal = deals.find(d => d.id === dealId);
-      if (deal) {
-        const bothVerified = isRequester 
-          ? true && deal.accepter_verified_requester
-          : deal.requester_verified_accepter && true;
-        
-        const bothTasksComplete = deal.requester_task_completed && deal.accepter_task_completed;
+      // Check if both verified
+      const { data: updatedDeal } = await supabase
+        .from("deals")
+        .select("*")
+        .eq("id", dealId)
+        .single();
 
-        if (bothVerified && bothTasksComplete) {
-          navigate(`/rate-deal/${dealId}`);
-        } else {
-          toast.success("Task verified!");
-          fetchActiveDeals();
-        }
+      const bothVerified = updatedDeal?.requester_verified_accepter && updatedDeal?.accepter_verified_requester;
+
+      if (bothVerified) {
+        toast.success("Both parties verified! Redirecting to rating page...");
+        setTimeout(() => navigate(`/rate-deal/${dealId}`), 1000);
+      } else {
+        toast.success("Verification recorded!");
+        fetchActiveDeals();
       }
     } catch (error: any) {
       toast.error(error.message);
@@ -152,39 +166,60 @@ export default function ActiveDeals() {
       const deal = deals.find(d => d.id === dealId);
       if (!deal) return;
 
+      // If this is the first cancellation request
+      if (!deal.cancellation_requested_by) {
+        const { error } = await supabase
+          .from("deals")
+          .update({ cancellation_requested_by: currentUserId })
+          .eq("id", dealId);
+
+        if (error) throw error;
+        
+        toast.success("Cancellation request sent. Waiting for the other party to agree.");
+        setCancelDialogOpen(false);
+        setDealToCancel(null);
+        fetchActiveDeals();
+        return;
+      }
+
+      // If the other party agrees to cancellation
+      if (deal.cancellation_requested_by !== currentUserId) {
+        const { error: updateError } = await supabase
+          .from("deals")
+          .update({ 
+            status: "cancelled",
+            cancellation_agreed: true 
+          })
+          .eq("id", dealId);
+
+        if (updateError) throw updateError;
+
+        // Update request status back to open
+        await supabase
+          .from("requests")
+          .update({ status: "open" })
+          .eq("id", deal.request_id);
+
+        toast.success("Deal cancelled by mutual agreement. You can now rate each other.");
+        setTimeout(() => navigate(`/rate-deal/${dealId}`), 1000);
+        setCancelDialogOpen(false);
+        setDealToCancel(null);
+      }
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
+  const handleCancelCancellationRequest = async (dealId: string) => {
+    try {
       const { error } = await supabase
         .from("deals")
-        .update({ status: "cancelled" })
+        .update({ cancellation_requested_by: null })
         .eq("id", dealId);
 
       if (error) throw error;
-
-      // Update both users' total_deals count (but not completed_deals)
-      const profiles = [deal.requester_id, deal.accepter_id];
-      for (const profileId of profiles) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("total_deals")
-          .eq("id", profileId)
-          .single();
-
-        if (profile) {
-          await supabase
-            .from("profiles")
-            .update({ total_deals: (profile.total_deals || 0) + 1 })
-            .eq("id", profileId);
-        }
-      }
-
-      // Update request status back to open
-      await supabase
-        .from("requests")
-        .update({ status: "open" })
-        .eq("id", deal.request_id);
-
-      toast.success("Deal cancelled. This will affect both users' success rates.");
-      setCancelDialogOpen(false);
-      setDealToCancel(null);
+      
+      toast.success("Cancellation request withdrawn.");
       fetchActiveDeals();
     } catch (error: any) {
       toast.error(error.message);
@@ -194,6 +229,24 @@ export default function ActiveDeals() {
   const openCancelDialog = (dealId: string) => {
     setDealToCancel(dealId);
     setCancelDialogOpen(true);
+  };
+
+  const handlePrerequisiteComplete = async (dealId: string) => {
+    try {
+      const { error } = await supabase
+        .from("deals")
+        .update({ 
+          prerequisite_completed: true,
+          status: "active"
+        })
+        .eq("id", dealId);
+
+      if (error) throw error;
+      toast.success("Prerequisites marked as complete! Deal is now active.");
+      fetchActiveDeals();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
   };
 
   if (loading) {
@@ -226,6 +279,10 @@ export default function ActiveDeals() {
             const myVerification = isRequester ? deal.requester_verified_accepter : deal.accepter_verified_requester;
             const otherVerification = isRequester ? deal.accepter_verified_requester : deal.requester_verified_accepter;
             const bothTasksComplete = myTaskCompleted && otherTaskCompleted;
+            const bothVerified = myVerification && otherVerification;
+            const hasRated = deal.reviews?.some(r => r.reviewer_id === currentUserId) || false;
+            const iCancelledRequested = deal.cancellation_requested_by === currentUserId;
+            const otherCancelRequested = deal.cancellation_requested_by && !iCancelledRequested;
 
             return (
               <Card key={deal.id}>
@@ -278,23 +335,7 @@ export default function ActiveDeals() {
                       </div>
                       {!deal.prerequisite_completed && (
                         <Button 
-                          onClick={async () => {
-                            try {
-                              const { error } = await supabase
-                                .from("deals")
-                                .update({ 
-                                  prerequisite_completed: true,
-                                  status: "active"
-                                })
-                                .eq("id", deal.id);
-
-                              if (error) throw error;
-                              toast.success("Prerequisites marked as complete! Deal is now active.");
-                              fetchActiveDeals();
-                            } catch (error: any) {
-                              toast.error(error.message);
-                            }
-                          }}
+                          onClick={() => handlePrerequisiteComplete(deal.id)}
                           className="w-full"
                         >
                           Mark Prerequisites as Complete
@@ -312,88 +353,143 @@ export default function ActiveDeals() {
                   {deal.status === "active" && (
                     <>
                       <div className="space-y-4">
-                        <h3 className="font-semibold">Task Completion</h3>
-                        <div className="space-y-3">
-                          <div className="p-3 rounded-lg border">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium">Your task:</span>
-                              {myTaskCompleted ? (
-                                <Badge className="bg-success">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Completed
-                                </Badge>
-                              ) : (
-                                <Button 
-                                  size="sm"
-                                  onClick={() => handleTaskCompletion(deal.id, isRequester)}
-                                >
-                                  Mark as Done
-                                </Button>
-                              )}
-                            </div>
-                            {myTaskCompleted && !myVerification && otherTaskCompleted && (
-                              <p className="text-sm text-muted-foreground">
-                                Waiting for {otherParty.username} to verify your completion
-                              </p>
+                        <h3 className="font-semibold">Task Progress</h3>
+                        
+                        {/* My Task */}
+                        <div className="p-4 rounded-lg border">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">Your Task</span>
+                            {myTaskCompleted ? (
+                              <Badge className="bg-success">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Completed
+                              </Badge>
+                            ) : (
+                              <Button 
+                                size="sm"
+                                onClick={() => handleMarkComplete(deal.id, isRequester)}
+                              >
+                                Mark as Complete
+                              </Button>
                             )}
                           </div>
-
-                          <div className="p-3 rounded-lg border bg-muted/30">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="font-medium">{otherParty.username}'s task:</span>
-                              {otherTaskCompleted ? (
-                                <Badge className="bg-success">
-                                  <CheckCircle className="h-3 w-3 mr-1" />
-                                  Completed
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary">Pending</Badge>
-                              )}
-                            </div>
-                            {otherTaskCompleted && !otherVerification && myTaskCompleted && (
-                              <div className="mt-2">
-                                <Button 
-                                  size="sm"
-                                  onClick={() => handleVerifyTask(deal.id, isRequester)}
-                                  className="w-full gap-2"
-                                >
-                                  <Eye className="h-4 w-4" />
-                                  Verify & Approve
-                                </Button>
-                              </div>
-                            )}
-                            {otherVerification && (
-                              <p className="text-sm text-muted-foreground mt-2">
-                                ✓ You verified their completion
-                              </p>
-                            )}
-                          </div>
+                          {myTaskCompleted && (
+                            <p className="text-sm text-muted-foreground">
+                              {otherVerification ? "✓ Verified by " + otherParty.username : "Waiting for verification"}
+                            </p>
+                          )}
                         </div>
+
+                        {/* Other Party's Task */}
+                        <div className="p-4 rounded-lg border bg-muted/30">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-medium">{otherParty.username}'s Task</span>
+                            {otherTaskCompleted ? (
+                              <Badge className="bg-success">
+                                <CheckCircle className="h-3 w-3 mr-1" />
+                                Completed
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary">Pending</Badge>
+                            )}
+                          </div>
+                          {otherTaskCompleted && !myVerification && (
+                            <Button 
+                              size="sm"
+                              onClick={() => handleVerify(deal.id, isRequester)}
+                              className="w-full mt-2 gap-2"
+                            >
+                              <Eye className="h-4 w-4" />
+                              Verify Completion
+                            </Button>
+                          )}
+                          {myVerification && (
+                            <p className="text-sm text-success mt-2">
+                              ✓ You verified their completion
+                            </p>
+                          )}
+                        </div>
+
+                        {otherTaskCompleted && !myVerification && (
+                          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                            <p className="text-sm text-center">
+                              {otherParty.username} marked their task complete! Verify their work.
+                            </p>
+                          </div>
+                        )}
+
+                        {bothTasksComplete && myVerification && otherVerification && (
+                          <div className="space-y-3 p-4 rounded-lg border border-success/20 bg-success/5">
+                            <h3 className="font-semibold flex items-center gap-2">
+                              <CheckCircle className="h-5 w-5 text-success" />
+                              {hasRated ? "Already rated!" : "All verified! Ready to rate"}
+                            </h3>
+                            {!hasRated && (
+                              <Button 
+                                onClick={() => navigate(`/rate-deal/${deal.id}`)}
+                                className="w-full"
+                              >
+                                Rate & Complete Deal
+                              </Button>
+                            )}
+                            {hasRated && (
+                              <p className="text-sm text-center text-muted-foreground">
+                                Waiting for {otherParty.username} to rate
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      {bothTasksComplete && myVerification && otherVerification && (
-                        <div className="space-y-3 p-4 rounded-lg border border-success/20 bg-success/5">
-                          <h3 className="font-semibold flex items-center gap-2">
-                            <CheckCircle className="h-5 w-5 text-success" />
-                            All verified! Ready to rate
-                          </h3>
+                      {otherCancelRequested && (
+                        <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 space-y-3">
+                          <p className="font-semibold text-destructive">
+                            {otherParty.username} has requested to cancel this deal
+                          </p>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="destructive"
+                              onClick={() => handleCancelRequest(deal.id)}
+                              className="flex-1"
+                            >
+                              Agree to Cancel
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              onClick={() => handleCancelCancellationRequest(deal.id)}
+                              className="flex-1"
+                            >
+                              Decline
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {iCancelledRequested && (
+                        <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-3">
+                          <p className="font-semibold">
+                            Waiting for {otherParty.username} to agree to cancellation
+                          </p>
                           <Button 
-                            onClick={() => navigate(`/rate-deal/${deal.id}`)}
+                            variant="outline"
+                            onClick={() => handleCancelCancellationRequest(deal.id)}
                             className="w-full"
                           >
-                            Rate & Complete Deal
+                            Withdraw Cancellation Request
                           </Button>
                         </div>
                       )}
 
-                      <Button 
-                        variant="outline" 
-                        onClick={() => openCancelDialog(deal.id)}
-                        className="w-full gap-2 border-destructive/50 text-destructive hover:bg-destructive/10"
-                      >
-                        <XCircle className="h-4 w-4" />
-                        Cancel Deal
-                      </Button>
+                      {!deal.cancellation_requested_by && (
+                        <Button 
+                          variant="outline" 
+                          onClick={() => openCancelDialog(deal.id)}
+                          className="w-full gap-2 border-destructive/50 text-destructive hover:bg-destructive/10"
+                        >
+                          <XCircle className="h-4 w-4" />
+                          Request to Cancel Deal
+                        </Button>
+                      )}
                     </>
                   )}
 
@@ -414,10 +510,10 @@ export default function ActiveDeals() {
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Deal?</AlertDialogTitle>
+            <AlertDialogTitle>Request to Cancel Deal?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cancelling this deal will affect both users' success rates. This action cannot be undone. 
-              The request will be reopened for others to accept.
+              This will send a cancellation request to the other party. Both users must agree to cancel the deal. 
+              After cancellation, you'll both be able to rate each other. The request will be reopened for others to accept.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -426,7 +522,7 @@ export default function ActiveDeals() {
               onClick={() => dealToCancel && handleCancelRequest(dealToCancel)}
               className="bg-destructive hover:bg-destructive/90"
             >
-              Cancel Deal
+              Request Cancellation
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

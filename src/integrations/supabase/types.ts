@@ -54,6 +54,8 @@ export type Database = {
           accepter_id: string
           accepter_task_completed: boolean | null
           accepter_verified_requester: boolean | null
+          cancellation_agreed: boolean | null
+          cancellation_requested_by: string | null
           completed_at: string | null
           created_at: string | null
           id: string
@@ -69,6 +71,8 @@ export type Database = {
           accepter_id: string
           accepter_task_completed?: boolean | null
           accepter_verified_requester?: boolean | null
+          cancellation_agreed?: boolean | null
+          cancellation_requested_by?: string | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
@@ -84,6 +88,8 @@ export type Database = {
           accepter_id?: string
           accepter_task_completed?: boolean | null
           accepter_verified_requester?: boolean | null
+          cancellation_agreed?: boolean | null
+          cancellation_requested_by?: string | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
@@ -367,11 +373,15 @@ export type Database = {
         Row: {
           category: string
           created_at: string | null
+          deadline: string | null
           description: string
+          dropoff_location: string | null
           has_prerequisite: boolean | null
           id: string
+          images: string[] | null
           money_amount: number | null
           offering: string
+          pickup_location: string | null
           prerequisite_description: string | null
           request_type: Database["public"]["Enums"]["request_type"]
           seeking: string
@@ -383,11 +393,15 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string | null
+          deadline?: string | null
           description: string
+          dropoff_location?: string | null
           has_prerequisite?: boolean | null
           id?: string
+          images?: string[] | null
           money_amount?: number | null
           offering: string
+          pickup_location?: string | null
           prerequisite_description?: string | null
           request_type: Database["public"]["Enums"]["request_type"]
           seeking: string
@@ -399,11 +413,15 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string | null
+          deadline?: string | null
           description?: string
+          dropoff_location?: string | null
           has_prerequisite?: boolean | null
           id?: string
+          images?: string[] | null
           money_amount?: number | null
           offering?: string
+          pickup_location?: string | null
           prerequisite_description?: string | null
           request_type?: Database["public"]["Enums"]["request_type"]
           seeking?: string

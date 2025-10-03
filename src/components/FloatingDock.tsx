@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Home, Search, Plus, MessageSquare, User, LogOut, ListChecks } from "lucide-react";
+import { Home, Search, Plus, MessageSquare, User, LogOut, ListChecks, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -13,6 +13,7 @@ const dockItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Marketplace", url: "/marketplace", icon: Search },
   { title: "Post Request", url: "/create-request", icon: Plus },
+  { title: "Your Requests", url: "/your-requests", icon: FileText },
   { title: "Active Deals", url: "/active-deals", icon: ListChecks },
   { title: "Messages", url: "/messages", icon: MessageSquare },
   { title: "Profile", url: "/profile", icon: User },

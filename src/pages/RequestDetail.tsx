@@ -20,7 +20,9 @@ import {
   DollarSign,
   CheckCircle,
   Loader2,
-  MapPin
+  MapPin,
+  Calendar,
+  Trash2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -36,6 +38,10 @@ interface RequestData {
   status: string;
   has_prerequisite: boolean;
   prerequisite_description: string | null;
+  deadline: string | null;
+  images: string[] | null;
+  pickup_location: string | null;
+  dropoff_location: string | null;
   created_at: string;
   user_id: string;
   profiles: {
@@ -65,6 +71,7 @@ const RequestDetail = () => {
   const [badges, setBadges] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,14 +132,46 @@ const RequestDetail = () => {
 
     setAccepting(true);
     try {
-      const { error } = await supabase.from("deals").insert([{
+      // First check if request is still open
+      const { data: currentRequest, error: checkError } = await supabase
+        .from("requests")
+        .select("status")
+        .eq("id", request.id)
+        .single();
+
+      if (checkError) throw checkError;
+      
+      if (currentRequest.status !== "open") {
+        toast.error("This request has already been accepted by someone else.");
+        navigate("/marketplace");
+        return;
+      }
+
+      // Update request status to in_progress
+      const { error: updateError } = await supabase
+        .from("requests")
+        .update({ status: "in_progress" })
+        .eq("id", request.id)
+        .eq("status", "open"); // Only update if still open
+
+      if (updateError) throw updateError;
+
+      // Create the deal
+      const { error: dealError } = await supabase.from("deals").insert([{
         request_id: request.id,
         requester_id: request.user_id,
         accepter_id: currentUserId,
         status: "pending",
       }] as any);
 
-      if (error) throw error;
+      if (dealError) {
+        // Rollback request status
+        await supabase
+          .from("requests")
+          .update({ status: "open" })
+          .eq("id", request.id);
+        throw dealError;
+      }
 
       toast.success("Request sent! Waiting for poster approval.");
       navigate("/marketplace");
@@ -140,6 +179,31 @@ const RequestDetail = () => {
       toast.error(error.message);
     } finally {
       setAccepting(false);
+    }
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!request || !isOwnRequest) return;
+
+    if (!confirm("Are you sure you want to delete this request? This action cannot be undone.")) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("requests")
+        .delete()
+        .eq("id", request.id);
+
+      if (error) throw error;
+
+      toast.success("Request deleted successfully");
+      navigate("/marketplace");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -212,10 +276,58 @@ const RequestDetail = () => {
             <Separator />
 
             <CardContent className="pt-6 space-y-6">
+              {request.images && request.images.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Images</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {request.images.map((image, index) => (
+                      <img
+                        key={index}
+                        src={image}
+                        alt={`Request image ${index + 1}`}
+                        className="w-full h-40 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => window.open(image, '_blank')}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h3 className="text-lg font-semibold mb-3">Description</h3>
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{request.description}</p>
               </div>
+
+              {request.deadline && (
+                <div className="flex items-center gap-2 text-sm p-3 rounded-lg border">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Deadline:</span>
+                  <span>{new Date(request.deadline).toLocaleDateString()} at {new Date(request.deadline).toLocaleTimeString()}</span>
+                </div>
+              )}
+
+              {(request.pickup_location || request.dropoff_location) && (
+                <div className="space-y-2">
+                  {request.pickup_location && (
+                    <div className="flex items-start gap-2 text-sm p-3 rounded-lg border">
+                      <MapPin className="h-4 w-4 text-primary mt-0.5" />
+                      <div>
+                        <span className="font-medium block">Pickup Location:</span>
+                        <span className="text-muted-foreground">{request.pickup_location}</span>
+                      </div>
+                    </div>
+                  )}
+                  {request.dropoff_location && (
+                    <div className="flex items-start gap-2 text-sm p-3 rounded-lg border">
+                      <MapPin className="h-4 w-4 text-accent mt-0.5" />
+                      <div>
+                        <span className="font-medium block">Dropoff Location:</span>
+                        <span className="text-muted-foreground">{request.dropoff_location}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <Separator />
 
@@ -345,8 +457,28 @@ const RequestDetail = () => {
               )}
 
               {isOwnRequest && (
-                <div className="p-3 rounded-lg bg-muted/50 text-center">
-                  <p className="text-sm text-muted-foreground">This is your request</p>
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <p className="text-sm text-muted-foreground">This is your request</p>
+                  </div>
+                  <Button 
+                    variant="destructive"
+                    onClick={handleDeleteRequest}
+                    disabled={deleting}
+                    className="w-full gap-2"
+                  >
+                    {deleting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-4 w-4" />
+                        Delete Request
+                      </>
+                    )}
+                  </Button>
                 </div>
               )}
             </CardContent>

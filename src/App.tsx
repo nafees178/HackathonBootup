@@ -15,6 +15,8 @@ import Conversations from "./pages/Conversations";
 import Messages from "./pages/Messages";
 import ActiveDeals from "./pages/ActiveDeals";
 import RateDeal from "./pages/RateDeal";
+import YourRequests from "./pages/YourRequests";
+import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,6 +29,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/auth" element={<Auth />} />
+          <Route path="/profile-setup" element={<ProfileSetup />} />
           <Route path="/" element={<Layout><Index /></Layout>} />
           <Route path="/marketplace" element={<Layout><Marketplace /></Layout>} />
           <Route path="/create-request" element={<Layout><CreateRequest /></Layout>} />
@@ -36,6 +39,7 @@ const App = () => (
           <Route path="/messages" element={<Layout><Conversations /></Layout>} />
           <Route path="/messages/legacy" element={<Layout><Messages /></Layout>} />
           <Route path="/active-deals" element={<Layout><ActiveDeals /></Layout>} />
+          <Route path="/your-requests" element={<Layout><YourRequests /></Layout>} />
           <Route path="/rate-deal/:dealId" element={<Layout><RateDeal /></Layout>} />
           <Route path="*" element={<Layout><NotFound /></Layout>} />
         </Routes>

@@ -18,9 +18,20 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        navigate("/");
+        // Check if profile setup is complete
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("bio, location")
+          .eq("id", session.user.id)
+          .single();
+
+        if (!profile?.bio || !profile?.location) {
+          navigate("/profile-setup");
+        } else {
+          navigate("/");
+        }
       }
     });
   }, [navigate]);
@@ -44,7 +55,8 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast.success("Account created! Please check your email to verify.");
+      toast.success("Account created! Redirecting to profile setup...");
+      setTimeout(() => navigate("/profile-setup"), 1000);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -64,8 +76,23 @@ const Auth = () => {
 
       if (error) throw error;
 
-      toast.success("Signed in successfully!");
-      navigate("/");
+      // Check if profile setup is complete
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("bio, location")
+          .eq("id", session.user.id)
+          .single();
+
+        if (!profile?.bio || !profile?.location) {
+          toast.success("Signed in! Please complete your profile.");
+          navigate("/profile-setup");
+        } else {
+          toast.success("Signed in successfully!");
+          navigate("/");
+        }
+      }
     } catch (error: any) {
       toast.error(error.message);
     } finally {

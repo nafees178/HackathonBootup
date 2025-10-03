@@ -35,7 +35,34 @@ export function ContactDialog({ receiverId, receiverUsername, requestId, request
         return;
       }
 
+      // Check if conversation already exists
+      const { data: existingConv } = await supabase
+        .from("conversations")
+        .select("id")
+        .or(`and(participant1_id.eq.${session.user.id},participant2_id.eq.${receiverId}),and(participant1_id.eq.${receiverId},participant2_id.eq.${session.user.id})`)
+        .maybeSingle();
+
+      let conversationId = existingConv?.id;
+
+      // Create conversation if it doesn't exist
+      if (!conversationId) {
+        const { data: newConv, error: convError } = await supabase
+          .from("conversations")
+          .insert([{
+            participant1_id: session.user.id,
+            participant2_id: receiverId,
+            request_id: requestId || null,
+          }])
+          .select()
+          .single();
+
+        if (convError) throw convError;
+        conversationId = newConv.id;
+      }
+
+      // Send message
       const { error } = await supabase.from("messages").insert([{
+        conversation_id: conversationId,
         sender_id: session.user.id,
         receiver_id: receiverId,
         request_id: requestId || null,

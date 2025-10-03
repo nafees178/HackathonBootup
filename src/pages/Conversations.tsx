@@ -5,9 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User, Send, Loader2 } from "lucide-react";
+import { User, Send, Loader2, Star } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useNavigate } from "react-router-dom";
 
 interface Message {
   id: string;
@@ -28,7 +30,15 @@ interface Conversation {
   messages: Message[];
 }
 
+interface RatingPrompt {
+  dealId: string;
+  otherUserId: string;
+  otherUsername: string;
+  requestTitle: string;
+}
+
 export default function Conversations() {
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -36,6 +46,7 @@ export default function Conversations() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [ratingPrompt, setRatingPrompt] = useState<RatingPrompt | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -51,8 +62,64 @@ export default function Conversations() {
     if (selectedConversation) {
       fetchMessages(selectedConversation);
       subscribeToMessages();
+      checkForRatingPrompt(selectedConversation);
     }
   }, [selectedConversation]);
+
+  const checkForRatingPrompt = async (conversationId: string) => {
+    if (!currentUserId) return;
+
+    try {
+      const conversation = conversations.find(c => c.id === conversationId);
+      if (!conversation) return;
+
+      const otherUserId = conversation.participant1_id === currentUserId
+        ? conversation.participant2_id
+        : conversation.participant1_id;
+
+      // Find completed deals between these users that haven't been rated
+      const { data: deals, error } = await supabase
+        .from("deals")
+        .select(`
+          id,
+          status,
+          requester_id,
+          accepter_id,
+          requests!inner(title)
+        `)
+        .eq("status", "completed")
+        .or(`and(requester_id.eq.${currentUserId},accepter_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},accepter_id.eq.${currentUserId})`);
+
+      if (error) throw error;
+
+      if (deals && deals.length > 0) {
+        // Check if user has already rated this deal
+        for (const deal of deals) {
+          const { data: existingReview } = await supabase
+            .from("reviews")
+            .select("id")
+            .eq("deal_id", deal.id)
+            .eq("reviewer_id", currentUserId)
+            .maybeSingle();
+
+          if (!existingReview) {
+            // Found a deal that needs rating
+            setRatingPrompt({
+              dealId: deal.id,
+              otherUserId,
+              otherUsername: conversation.profiles.username,
+              requestTitle: deal.requests.title,
+            });
+            return;
+          }
+        }
+      }
+
+      setRatingPrompt(null);
+    } catch (error) {
+      console.error("Error checking for rating prompt:", error);
+    }
+  };
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -267,6 +334,22 @@ export default function Conversations() {
           <CardContent>
             {selectedConversation ? (
               <div className="space-y-4">
+                {ratingPrompt && (
+                  <Alert className="bg-primary/10 border-primary/20">
+                    <Star className="h-4 w-4 text-primary" />
+                    <AlertDescription className="flex items-center justify-between">
+                      <span>
+                        Rate your experience with {ratingPrompt.otherUsername} for "{ratingPrompt.requestTitle}"
+                      </span>
+                      <Button
+                        size="sm"
+                        onClick={() => navigate(`/rate-deal/${ratingPrompt.dealId}`)}
+                      >
+                        Rate Now
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
                 <ScrollArea className="h-[500px] pr-4">
                   <div className="space-y-4">
                     {messages.map((msg) => (

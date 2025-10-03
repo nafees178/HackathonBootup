@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2, Package, HelpCircle, Eye, ArrowLeft } from "lucide-react";
+import { Loader2, Package, HelpCircle, Eye, ArrowLeft, Upload, X, MapPin, Calendar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const categories = [
@@ -23,6 +23,8 @@ const CreateRequest = () => {
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("form");
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -35,6 +37,9 @@ const CreateRequest = () => {
     category: "",
     hasPrerequisite: false,
     prerequisiteDescription: "",
+    deadline: "",
+    pickupLocation: "",
+    dropoffLocation: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -48,6 +53,52 @@ const CreateRequest = () => {
       }
     });
   }, [navigate]);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (imageFiles.length + files.length > 5) {
+      toast.error("Maximum 5 images allowed");
+      return;
+    }
+    setImageFiles([...imageFiles, ...files]);
+  };
+
+  const removeImage = (index: number) => {
+    setImageFiles(imageFiles.filter((_, i) => i !== index));
+  };
+
+  const uploadImages = async (): Promise<string[]> => {
+    if (imageFiles.length === 0) return [];
+    
+    setUploadingImages(true);
+    const uploadedUrls: string[] = [];
+
+    try {
+      for (const file of imageFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${userId}/${Date.now()}-${Math.random()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('request-images')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('request-images')
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(publicUrl);
+      }
+    } catch (error: any) {
+      toast.error("Failed to upload images: " + error.message);
+      throw error;
+    } finally {
+      setUploadingImages(false);
+    }
+
+    return uploadedUrls;
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -100,6 +151,8 @@ const CreateRequest = () => {
 
     setLoading(true);
     try {
+      const imageUrls = await uploadImages();
+
       const { error } = await supabase.from("requests").insert([{
         user_id: userId,
         title: formData.title,
@@ -111,11 +164,33 @@ const CreateRequest = () => {
         category: formData.category,
         has_prerequisite: formData.hasPrerequisite,
         prerequisite_description: formData.hasPrerequisite ? formData.prerequisiteDescription : null,
+        deadline: formData.deadline || null,
+        images: imageUrls.length > 0 ? imageUrls : null,
+        pickup_location: formData.pickupLocation || null,
+        dropoff_location: formData.dropoffLocation || null,
       }] as any);
 
       if (error) throw error;
 
       toast.success("Request posted successfully!");
+      
+      // Reset form
+      setFormData({
+        title: "",
+        description: "",
+        requestType: "skill_for_skill",
+        offering: "",
+        seeking: "",
+        moneyAmount: "",
+        category: "",
+        hasPrerequisite: false,
+        prerequisiteDescription: "",
+        deadline: "",
+        pickupLocation: "",
+        dropoffLocation: "",
+      });
+      setImageFiles([]);
+      
       navigate("/marketplace");
     } catch (error: any) {
       toast.error(error.message);
@@ -184,7 +259,7 @@ const CreateRequest = () => {
                     />
                     {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
                     <p className="text-xs text-muted-foreground">
-                      {formData.title.length}/100 characters (min 10)
+                      {formData.title.length}/200 characters
                     </p>
                   </div>
 
@@ -201,8 +276,68 @@ const CreateRequest = () => {
                     />
                     {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
                     <p className="text-xs text-muted-foreground">
-                      {formData.description.length}/1000 characters (min 50)
+                      {formData.description.length}/2000 characters
                     </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="deadline">Deadline (Optional)</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="deadline"
+                        type="datetime-local"
+                        value={formData.deadline}
+                        onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                        className="pl-10"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Set a deadline for when you need this completed
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="images">Images (Optional)</Label>
+                    <div className="border-2 border-dashed rounded-lg p-4">
+                      <Input
+                        id="images"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                      <Label
+                        htmlFor="images"
+                        className="flex flex-col items-center justify-center cursor-pointer gap-2"
+                      >
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Click to upload images (max 5)
+                        </span>
+                      </Label>
+                    </div>
+                    {imageFiles.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        {imageFiles.map((file, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-24 object-cover rounded"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <Separator />
@@ -318,22 +453,54 @@ const CreateRequest = () => {
                     </p>
 
                     {formData.hasPrerequisite && (
-                      <div className="space-y-2">
-                        <Label htmlFor="prerequisiteDescription">Prerequisite Description *</Label>
-                        <Textarea
-                          id="prerequisiteDescription"
-                          placeholder="e.g., Must provide project files, assets, and content outline before starting design work"
-                          value={formData.prerequisiteDescription}
-                          onChange={(e) =>
-                            setFormData({ ...formData, prerequisiteDescription: e.target.value })
-                          }
-                          className={errors.prerequisiteDescription ? "border-destructive" : ""}
-                          rows={3}
-                          required={formData.hasPrerequisite}
-                        />
-                        {errors.prerequisiteDescription && (
-                          <p className="text-sm text-destructive">{errors.prerequisiteDescription}</p>
-                        )}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="prerequisiteDescription">Prerequisite Description *</Label>
+                          <Textarea
+                            id="prerequisiteDescription"
+                            placeholder="e.g., Must provide project files, assets, and content outline before starting design work"
+                            value={formData.prerequisiteDescription}
+                            onChange={(e) =>
+                              setFormData({ ...formData, prerequisiteDescription: e.target.value })
+                            }
+                            className={errors.prerequisiteDescription ? "border-destructive" : ""}
+                            rows={3}
+                            required={formData.hasPrerequisite}
+                          />
+                          {errors.prerequisiteDescription && (
+                            <p className="text-sm text-destructive">{errors.prerequisiteDescription}</p>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="pickupLocation">Pickup Location (Optional)</Label>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="pickupLocation"
+                                placeholder="e.g., 123 Main St, City"
+                                value={formData.pickupLocation}
+                                onChange={(e) => setFormData({ ...formData, pickupLocation: e.target.value })}
+                                className="pl-10"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="dropoffLocation">Dropoff Location (Optional)</Label>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                id="dropoffLocation"
+                                placeholder="e.g., 456 Oak Ave, City"
+                                value={formData.dropoffLocation}
+                                onChange={(e) => setFormData({ ...formData, dropoffLocation: e.target.value })}
+                                className="pl-10"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -348,8 +515,8 @@ const CreateRequest = () => {
                       <Eye className="mr-2 h-4 w-4" />
                       Preview Request
                     </Button>
-                    <Button type="submit" className="flex-1" size="lg" disabled={loading}>
-                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Button type="submit" className="flex-1" size="lg" disabled={loading || uploadingImages}>
+                      {(loading || uploadingImages) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Post Request
                     </Button>
                   </div>
@@ -365,9 +532,28 @@ const CreateRequest = () => {
                 <div className="flex items-center gap-3">
                   <Badge variant="outline">{formData.category || "Category"}</Badge>
                   <Badge>{requestTypeLabels[formData.requestType]}</Badge>
+                  {formData.deadline && (
+                    <Badge variant="secondary" className="gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {new Date(formData.deadline).toLocaleDateString()}
+                    </Badge>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
+                {imageFiles.length > 0 && (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {imageFiles.map((file, index) => (
+                      <img
+                        key={index}
+                        src={URL.createObjectURL(file)}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-32 object-cover rounded-lg"
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <div>
                   <h3 className="font-semibold mb-2">Description</h3>
                   <p className="text-muted-foreground whitespace-pre-wrap">
@@ -393,9 +579,31 @@ const CreateRequest = () => {
                 </div>
 
                 {formData.hasPrerequisite && formData.prerequisiteDescription && (
-                  <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5">
-                    <h4 className="font-semibold mb-2">Prerequisites Required</h4>
+                  <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-3">
+                    <h4 className="font-semibold">Prerequisites Required</h4>
                     <p className="text-sm text-muted-foreground">{formData.prerequisiteDescription}</p>
+                    {(formData.pickupLocation || formData.dropoffLocation) && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                        {formData.pickupLocation && (
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <div>
+                              <p className="text-xs font-medium">Pickup</p>
+                              <p className="text-xs text-muted-foreground">{formData.pickupLocation}</p>
+                            </div>
+                          </div>
+                        )}
+                        {formData.dropoffLocation && (
+                          <div className="flex items-start gap-2">
+                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                            <div>
+                              <p className="text-xs font-medium">Dropoff</p>
+                              <p className="text-xs text-muted-foreground">{formData.dropoffLocation}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
