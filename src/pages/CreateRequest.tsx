@@ -1,192 +1,252 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "sonner";
+import { Loader2, Sparkles, Package } from "lucide-react";
 
 const CreateRequest = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("");
-  const [offerType, setOfferType] = useState("");
-  const [offerValue, setOfferValue] = useState("");
-  const [prerequisites, setPrerequisites] = useState("");
   const [loading, setLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    requestType: "skill_for_skill",
+    offering: "",
+    seeking: "",
+    moneyAmount: "",
+    category: "",
+    hasPrerequisite: false,
+    prerequisiteDescription: "",
+  });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
+      } else {
+        setUserId(session.user.id);
       }
-    };
-    checkAuth();
+    });
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!userId) return;
+
     setLoading(true);
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { error } = await supabase.from("requests").insert({
-        user_id: user.id,
-        title,
-        description,
-        category,
-        offer_type: offerType,
-        offer_value: offerValue,
-        prerequisites: prerequisites || null,
-      });
+      const { error } = await supabase.from("requests").insert([{
+        user_id: userId,
+        title: formData.title,
+        description: formData.description,
+        request_type: formData.requestType,
+        offering: formData.offering,
+        seeking: formData.seeking,
+        money_amount: formData.moneyAmount ? parseFloat(formData.moneyAmount) : null,
+        category: formData.category,
+        has_prerequisite: formData.hasPrerequisite,
+        prerequisite_description: formData.hasPrerequisite ? formData.prerequisiteDescription : null,
+      }] as any);
 
       if (error) throw error;
 
-      toast({
-        title: "Success!",
-        description: "Your request has been posted to the marketplace.",
-      });
+      toast.success("Request posted successfully!");
       navigate("/marketplace");
-    } catch (error) {
-      console.error("Error creating request:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create request. Please try again.",
-        variant: "destructive",
-      });
+    } catch (error: any) {
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="bg-card border-b border-border">
-        <div className="container mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={() => navigate("/marketplace")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Marketplace
-          </Button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      {/* Animated background */}
+      <div className="fixed inset-0 -z-10" style={{ background: "var(--gradient-mesh)" }} />
+      
+      <Navbar />
 
-      <main className="container mx-auto px-4 py-8 max-w-2xl">
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Create New Request</CardTitle>
-            <CardDescription>
-              Post what you need and what you're offering in return
-            </CardDescription>
+      <div className="container mx-auto px-4 py-12">
+        <div className="text-center mb-12 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium">Create New Request</span>
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            What Do You Need?
+          </h1>
+          <p className="text-xl text-muted-foreground">Share your request with the community</p>
+        </div>
+
+        <Card className="max-w-3xl mx-auto border-2 border-primary/20 bg-card/80 backdrop-blur-xl relative animate-slide-up">
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 rounded-lg" />
+          
+          <CardHeader className="relative">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Package className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-3xl">Post a Request</CardTitle>
+                <CardDescription>Fill in the details below</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
+          
+          <CardContent className="relative">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="title">Request Title</Label>
+                <Label htmlFor="title">Request Title *</Label>
                 <Input
                   id="title"
-                  placeholder="What do you need?"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g., Need website design for my startup"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">Description *</Label>
                 <Textarea
                   id="description"
-                  placeholder="Provide details about your request..."
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                  rows={5}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="category">Category</Label>
-                <Select value={category} onValueChange={setCategory} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Design">Design</SelectItem>
-                    <SelectItem value="Education">Education</SelectItem>
-                    <SelectItem value="Tech">Tech</SelectItem>
-                    <SelectItem value="Writing">Writing</SelectItem>
-                    <SelectItem value="Marketing">Marketing</SelectItem>
-                    <SelectItem value="Video/Photo">Video/Photo</SelectItem>
-                    <SelectItem value="Music/Audio">Music/Audio</SelectItem>
-                    <SelectItem value="Business">Business</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="offerType">What are you offering?</Label>
-                <Select value={offerType} onValueChange={setOfferType} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select offer type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="skill">Skill / Service</SelectItem>
-                    <SelectItem value="item">Item</SelectItem>
-                    <SelectItem value="money">Money</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="offerValue">Offer Details</Label>
-                <Input
-                  id="offerValue"
-                  placeholder={
-                    offerType === "money"
-                      ? "e.g., ₹500"
-                      : offerType === "skill"
-                        ? "e.g., 2 hours of React tutoring"
-                        : "e.g., Second-hand keyboard"
-                  }
-                  value={offerValue}
-                  onChange={(e) => setOfferValue(e.target.value)}
+                  placeholder="Provide details about what you need..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={4}
+                  className="bg-background/50 border-primary/20 focus:border-primary/40"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="prerequisites">Prerequisites (Optional)</Label>
-                <Textarea
-                  id="prerequisites"
-                  placeholder="What needs to be done before work can start? (e.g., provide materials, access, etc.)"
-                  value={prerequisites}
-                  onChange={(e) => setPrerequisites(e.target.value)}
-                  rows={3}
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="requestType">Exchange Type *</Label>
+                  <Select
+                    value={formData.requestType}
+                    onValueChange={(value) => setFormData({ ...formData, requestType: value })}
+                  >
+                    <SelectTrigger className="bg-background/50 border-primary/20 h-12">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="skill_for_skill">Skill ↔ Skill</SelectItem>
+                      <SelectItem value="skill_for_item">Skill ↔ Item</SelectItem>
+                      <SelectItem value="skill_for_money">Skill ↔ Money</SelectItem>
+                      <SelectItem value="item_for_skill">Item ↔ Skill</SelectItem>
+                      <SelectItem value="item_for_item">Item ↔ Item</SelectItem>
+                      <SelectItem value="item_for_money">Item ↔ Money</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category *</Label>
+                  <Input
+                    id="category"
+                    placeholder="e.g., Design, Coding, Tutoring"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
+                    required
+                  />
+                </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Posting..." : "Post Request"}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="offering">What You're Offering *</Label>
+                  <Input
+                    id="offering"
+                    placeholder="e.g., React tutoring"
+                    value={formData.offering}
+                    onChange={(e) => setFormData({ ...formData, offering: e.target.value })}
+                    className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="seeking">What You're Seeking *</Label>
+                  <Input
+                    id="seeking"
+                    placeholder="e.g., Logo design"
+                    value={formData.seeking}
+                    onChange={(e) => setFormData({ ...formData, seeking: e.target.value })}
+                    className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
+                    required
+                  />
+                </div>
+              </div>
+
+              {formData.requestType.includes("money") && (
+                <div className="space-y-2">
+                  <Label htmlFor="moneyAmount">Amount (₹)</Label>
+                  <Input
+                    id="moneyAmount"
+                    type="number"
+                    placeholder="500"
+                    value={formData.moneyAmount}
+                    onChange={(e) => setFormData({ ...formData, moneyAmount: e.target.value })}
+                    className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
+                  />
+                </div>
+              )}
+
+              <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-primary/10">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="hasPrerequisite"
+                    checked={formData.hasPrerequisite}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, hasPrerequisite: checked as boolean })
+                    }
+                  />
+                  <Label htmlFor="hasPrerequisite" className="cursor-pointer font-medium">
+                    This request has prerequisites
+                  </Label>
+                </div>
+
+                {formData.hasPrerequisite && (
+                  <div className="space-y-2 mt-3">
+                    <Label htmlFor="prerequisiteDescription">Prerequisite Description *</Label>
+                    <Textarea
+                      id="prerequisiteDescription"
+                      placeholder="e.g., Must provide project files and assets before starting"
+                      value={formData.prerequisiteDescription}
+                      onChange={(e) =>
+                        setFormData({ ...formData, prerequisiteDescription: e.target.value })
+                      }
+                      rows={3}
+                      className="bg-background/50 border-primary/20 focus:border-primary/40"
+                      required={formData.hasPrerequisite}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <Button type="submit" className="w-full h-14 text-lg relative group overflow-hidden" disabled={loading}>
+                <span className="relative z-10 flex items-center gap-2">
+                  {loading && <Loader2 className="h-5 w-5 animate-spin" />}
+                  Post Request
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-0 group-hover:opacity-100 transition-opacity" />
               </Button>
             </form>
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   );
 };

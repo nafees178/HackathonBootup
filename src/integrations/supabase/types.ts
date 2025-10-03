@@ -14,73 +14,128 @@ export type Database = {
   }
   public: {
     Tables: {
-      badges: {
-        Row: {
-          criteria: string
-          description: string
-          icon: string
-          id: string
-          name: string
-        }
-        Insert: {
-          criteria: string
-          description: string
-          icon: string
-          id?: string
-          name: string
-        }
-        Update: {
-          criteria?: string
-          description?: string
-          icon?: string
-          id?: string
-          name?: string
-        }
-        Relationships: []
-      }
       deals: {
         Row: {
           accepter_id: string
-          accepter_rating: number | null
+          completed_at: string | null
           created_at: string | null
           id: string
           prerequisite_completed: boolean | null
           request_id: string
           requester_id: string
-          requester_rating: number | null
-          status: string | null
+          status: Database["public"]["Enums"]["deal_status"] | null
           updated_at: string | null
         }
         Insert: {
           accepter_id: string
-          accepter_rating?: number | null
+          completed_at?: string | null
           created_at?: string | null
           id?: string
           prerequisite_completed?: boolean | null
           request_id: string
           requester_id: string
-          requester_rating?: number | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["deal_status"] | null
           updated_at?: string | null
         }
         Update: {
           accepter_id?: string
-          accepter_rating?: number | null
+          completed_at?: string | null
           created_at?: string | null
           id?: string
           prerequisite_completed?: boolean | null
           request_id?: string
           requester_id?: string
-          requester_rating?: number | null
-          status?: string | null
+          status?: Database["public"]["Enums"]["deal_status"] | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "deals_accepter_id_fkey"
+            columns: ["accepter_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "deals_request_id_fkey"
             columns: ["request_id"]
             isOneToOne: false
             referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disputes: {
+        Row: {
+          created_at: string | null
+          deal_id: string
+          id: string
+          reason: string
+          reported_against: string
+          reported_by: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          deal_id: string
+          id?: string
+          reason: string
+          reported_against: string
+          reported_by: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          deal_id?: string
+          id?: string
+          reason?: string
+          reported_against?: string
+          reported_by?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disputes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_reported_against_fkey"
+            columns: ["reported_against"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disputes_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -91,36 +146,36 @@ export type Database = {
           bio: string | null
           completed_deals: number | null
           created_at: string | null
-          display_name: string | null
+          full_name: string | null
           id: string
           reputation_score: number | null
-          response_time_hours: number | null
+          total_deals: number | null
           updated_at: string | null
-          user_id: string
+          username: string
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
           completed_deals?: number | null
           created_at?: string | null
-          display_name?: string | null
-          id?: string
+          full_name?: string | null
+          id: string
           reputation_score?: number | null
-          response_time_hours?: number | null
+          total_deals?: number | null
           updated_at?: string | null
-          user_id: string
+          username: string
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
           completed_deals?: number | null
           created_at?: string | null
-          display_name?: string | null
+          full_name?: string | null
           id?: string
           reputation_score?: number | null
-          response_time_hours?: number | null
+          total_deals?: number | null
           updated_at?: string | null
-          user_id?: string
+          username?: string
         }
         Relationships: []
       }
@@ -129,71 +184,166 @@ export type Database = {
           category: string
           created_at: string | null
           description: string
+          has_prerequisite: boolean | null
           id: string
-          offer_type: string
-          offer_value: string
-          prerequisites: string | null
-          status: string | null
+          money_amount: number | null
+          offering: string
+          prerequisite_description: string | null
+          request_type: Database["public"]["Enums"]["request_type"]
+          seeking: string
+          status: Database["public"]["Enums"]["request_status"] | null
           title: string
           updated_at: string | null
           user_id: string
-          views: number | null
         }
         Insert: {
           category: string
           created_at?: string | null
           description: string
+          has_prerequisite?: boolean | null
           id?: string
-          offer_type: string
-          offer_value: string
-          prerequisites?: string | null
-          status?: string | null
+          money_amount?: number | null
+          offering: string
+          prerequisite_description?: string | null
+          request_type: Database["public"]["Enums"]["request_type"]
+          seeking: string
+          status?: Database["public"]["Enums"]["request_status"] | null
           title: string
           updated_at?: string | null
           user_id: string
-          views?: number | null
         }
         Update: {
           category?: string
           created_at?: string | null
           description?: string
+          has_prerequisite?: boolean | null
           id?: string
-          offer_type?: string
-          offer_value?: string
-          prerequisites?: string | null
-          status?: string | null
+          money_amount?: number | null
+          offering?: string
+          prerequisite_description?: string | null
+          request_type?: Database["public"]["Enums"]["request_type"]
+          seeking?: string
+          status?: Database["public"]["Enums"]["request_status"] | null
           title?: string
           updated_at?: string | null
           user_id?: string
-          views?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          comment: string | null
+          created_at: string | null
+          deal_id: string
+          id: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string | null
+          deal_id: string
+          id?: string
+          rating: number
+          reviewee_id: string
+          reviewer_id: string
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string | null
+          deal_id?: string
+          id?: string
+          rating?: number
+          reviewee_id?: string
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewee_id_fkey"
+            columns: ["reviewee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_badges: {
         Row: {
-          badge_id: string
+          badge_type: Database["public"]["Enums"]["badge_type"]
           earned_at: string | null
           id: string
           user_id: string
         }
         Insert: {
-          badge_id: string
+          badge_type: Database["public"]["Enums"]["badge_type"]
           earned_at?: string | null
           id?: string
           user_id: string
         }
         Update: {
-          badge_id?: string
+          badge_type?: Database["public"]["Enums"]["badge_type"]
           earned_at?: string | null
           id?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "user_badges_badge_id_fkey"
-            columns: ["badge_id"]
+            foreignKeyName: "user_badges_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "badges"
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          granted_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          granted_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          granted_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -203,10 +353,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "user" | "mediator" | "admin"
+      badge_type:
+        | "trusted"
+        | "fast_responder"
+        | "skill_master"
+        | "fair_trader"
+        | "prerequisite_ready"
+      deal_status:
+        | "pending"
+        | "active"
+        | "prerequisite_pending"
+        | "completed"
+        | "cancelled"
+        | "disputed"
+      request_status:
+        | "open"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
+        | "disputed"
+      request_type:
+        | "skill_for_skill"
+        | "skill_for_item"
+        | "skill_for_money"
+        | "item_for_skill"
+        | "item_for_item"
+        | "item_for_money"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -333,6 +515,38 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["user", "mediator", "admin"],
+      badge_type: [
+        "trusted",
+        "fast_responder",
+        "skill_master",
+        "fair_trader",
+        "prerequisite_ready",
+      ],
+      deal_status: [
+        "pending",
+        "active",
+        "prerequisite_pending",
+        "completed",
+        "cancelled",
+        "disputed",
+      ],
+      request_status: [
+        "open",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "disputed",
+      ],
+      request_type: [
+        "skill_for_skill",
+        "skill_for_item",
+        "skill_for_money",
+        "item_for_skill",
+        "item_for_item",
+        "item_for_money",
+      ],
+    },
   },
 } as const

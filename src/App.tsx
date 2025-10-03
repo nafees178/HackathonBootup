@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Marketplace from "./pages/Marketplace";
 import CreateRequest from "./pages/CreateRequest";
+import Profile from "./pages/Profile";
 import RequestDetail from "./pages/RequestDetail";
 import NotFound from "./pages/NotFound";
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/create-request" element={<CreateRequest />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/request/:id" element={<RequestDetail />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

@@ -1,170 +1,236 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Navbar } from "@/components/Navbar";
+import { BadgeDisplay } from "@/components/BadgeDisplay";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import { 
   ArrowLeft, 
-  Star, 
-  Eye, 
+  User, 
   Clock, 
-  User,
+  Star, 
+  AlertCircle, 
+  Package, 
+  DollarSign,
   CheckCircle,
-  AlertCircle,
-  Award,
-  Zap,
-  Shield,
-  MessageSquare
+  Loader2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
 
-const badgeIcons: Record<string, { icon: any; label: string; color: string }> = {
-  trusted: { icon: Award, label: "Trusted", color: "text-primary" },
-  "fast-responder": { icon: Zap, label: "Fast Responder", color: "text-secondary" },
-  "skill-master": { icon: Star, label: "Skill Master", color: "text-accent" },
-  "fair-trader": { icon: Shield, label: "Fair Trader", color: "text-success" },
-  "prerequisite-ready": { icon: CheckCircle, label: "Prerequisite Ready", color: "text-success" },
+interface RequestData {
+  id: string;
+  title: string;
+  description: string;
+  request_type: string;
+  offering: string;
+  seeking: string;
+  money_amount: number | null;
+  category: string;
+  status: string;
+  has_prerequisite: boolean;
+  prerequisite_description: string | null;
+  created_at: string;
+  user_id: string;
+  profiles: {
+    id: string;
+    username: string;
+    full_name: string | null;
+    reputation_score: number;
+    total_deals: number;
+    completed_deals: number;
+  };
+}
+
+interface UserBadge {
+  badge_type: string;
+}
+
+const requestTypeLabels: Record<string, string> = {
+  skill_for_skill: "Skill ↔ Skill",
+  skill_for_item: "Skill ↔ Item",
+  skill_for_money: "Skill ↔ Money",
+  item_for_skill: "Item ↔ Skill",
+  item_for_item: "Item ↔ Item",
+  item_for_money: "Item ↔ Money",
 };
 
-export default function RequestDetail() {
+const RequestDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
-  const [request, setRequest] = useState<any>(null);
+  const [request, setRequest] = useState<RequestData | null>(null);
+  const [badges, setBadges] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [accepting, setAccepting] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          navigate("/auth");
-          return;
-        }
-        setCurrentUserId(user.id);
+    fetchRequest();
+    checkAuth();
+  }, [id]);
 
-        const { data, error } = await supabase
-          .from("requests")
-          .select(`
-            *,
-            profiles (
-              display_name,
-              bio,
-              reputation_score,
-              completed_deals,
-              response_time_hours,
-              user_badges (
-                badges (
-                  name,
-                  icon,
-                  description
-                )
-              )
-            )
-          `)
-          .eq("id", id)
-          .single();
+  const checkAuth = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    setCurrentUserId(session?.user?.id || null);
+  };
 
-        if (error) throw error;
+  const fetchRequest = async () => {
+    try {
+      const { data: requestData, error: requestError } = await supabase
+        .from("requests")
+        .select(`
+          *,
+          profiles (
+            id,
+            username,
+            full_name,
+            reputation_score,
+            total_deals,
+            completed_deals
+          )
+        `)
+        .eq("id", id)
+        .single();
 
-        // Increment views
-        await supabase
-          .from("requests")
-          .update({ views: (data.views || 0) + 1 })
-          .eq("id", id);
+      if (requestError) throw requestError;
 
-        setRequest(data);
-      } catch (error) {
-        console.error("Error fetching request:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load request details",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+      const { data: badgesData, error: badgesError } = await supabase
+        .from("user_badges")
+        .select("badge_type")
+        .eq("user_id", requestData.user_id);
 
-    fetchData();
-  }, [id, navigate, toast]);
+      if (badgesError) throw badgesError;
 
-  const handleAcceptRequest = () => {
-    toast({
-      title: "Coming Soon",
-      description: "Deal acceptance flow will be implemented next!",
-    });
+      setRequest(requestData);
+      setBadges(badgesData.map((b: UserBadge) => b.badge_type));
+    } catch (error) {
+      console.error("Error fetching request:", error);
+      toast.error("Failed to load request");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAcceptRequest = async () => {
+    if (!currentUserId) {
+      navigate("/auth");
+      return;
+    }
+
+    if (!request) return;
+
+    setAccepting(true);
+    try {
+      const { error } = await supabase.from("deals").insert([{
+        request_id: request.id,
+        requester_id: request.user_id,
+        accepter_id: currentUserId,
+        status: request.has_prerequisite ? "prerequisite_pending" : "active",
+      }] as any);
+
+      if (error) throw error;
+
+      toast.success("Deal initiated! The requester will be notified.");
+      navigate("/marketplace");
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setAccepting(false);
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!request) {
     return (
-      <div className="min-h-screen bg-muted/30 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Request not found</p>
-          <Button onClick={() => navigate("/marketplace")}>Back to Marketplace</Button>
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="container mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="pt-6 text-center">
+              <p className="text-muted-foreground">Request not found</p>
+              <Button onClick={() => navigate("/marketplace")} className="mt-4">
+                Back to Marketplace
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
-  const isOwner = currentUserId === request.user_id;
-  const badges = request.profiles?.user_badges?.map((ub: any) => ub.badges) || [];
+  const isOwnRequest = currentUserId === request.user_id;
+  const completionRate = request.profiles.total_deals > 0
+    ? Math.round((request.profiles.completed_deals / request.profiles.total_deals) * 100)
+    : 0;
 
   return (
-    <div className="min-h-screen bg-muted/30">
-      <header className="bg-card border-b border-border sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <Button variant="ghost" onClick={() => navigate("/marketplace")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Marketplace
-          </Button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background">
+      <Navbar />
 
-      <main className="container mx-auto px-4 py-8 max-w-5xl">
-        <div className="grid gap-6 lg:grid-cols-3">
+      <div className="container mx-auto px-4 py-8">
+        <Button
+          variant="ghost"
+          onClick={() => navigate("/marketplace")}
+          className="mb-6 gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Marketplace
+        </Button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            <Card>
+            <Card className="border-2 border-primary/20">
               <CardHeader>
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Badge variant="secondary" className="font-semibold">
-                        {request.category}
-                      </Badge>
-                      <Badge variant="outline">{request.status}</Badge>
-                    </div>
                     <CardTitle className="text-3xl mb-2">{request.title}</CardTitle>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Eye className="h-4 w-4" />
-                        <span>{request.views} views</span>
-                      </div>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>Posted {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
                     </div>
                   </div>
+                  <Badge variant="outline" className="text-lg px-4 py-1">
+                    {request.category}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Badge className="text-sm px-3 py-1">
+                    {requestTypeLabels[request.request_type]}
+                  </Badge>
+                  {request.status === "open" ? (
+                    <Badge className="bg-success text-success-foreground">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Open
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary">Closed</Badge>
+                  )}
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+
+              <Separator />
+
+              <CardContent className="pt-6 space-y-6">
                 <div>
-                  <h3 className="font-semibold text-lg mb-3">Description</h3>
+                  <h3 className="text-lg font-semibold mb-3">Description</h3>
                   <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                     {request.description}
                   </p>
@@ -172,30 +238,43 @@ export default function RequestDetail() {
 
                 <Separator />
 
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Offering in Return</h3>
-                  <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1 capitalize">
-                          {request.offer_type}
-                        </p>
-                        <p className="text-xl font-bold text-primary">{request.offer_value}</p>
-                      </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="p-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Package className="h-5 w-5 text-primary" />
+                      <h4 className="font-semibold">Offering</h4>
                     </div>
+                    <p className="text-lg">{request.offering}</p>
+                  </div>
+
+                  <div className="p-4 rounded-lg bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20">
+                    <div className="flex items-center gap-2 mb-2">
+                      <DollarSign className="h-5 w-5 text-accent" />
+                      <h4 className="font-semibold">Seeking</h4>
+                    </div>
+                    <p className="text-lg">
+                      {request.seeking}
+                      {request.money_amount && (
+                        <span className="block text-2xl font-bold text-accent mt-1">
+                          ₹{request.money_amount}
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
 
-                {request.prerequisites && (
+                {request.has_prerequisite && request.prerequisite_description && (
                   <>
                     <Separator />
-                    <div>
-                      <div className="flex items-center gap-2 mb-3">
-                        <AlertCircle className="h-5 w-5 text-warning" />
-                        <h3 className="font-semibold text-lg">Prerequisites Required</h3>
-                      </div>
-                      <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
-                        <p className="text-muted-foreground">{request.prerequisites}</p>
+                    <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-semibold mb-2">Prerequisites Required</h4>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {request.prerequisite_description}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -204,105 +283,90 @@ export default function RequestDetail() {
             </Card>
           </div>
 
-          {/* Sidebar */}
+          {/* Sidebar - User Info */}
           <div className="space-y-6">
-            {/* User Profile Card */}
-            <Card>
+            <Card className="border-primary/20">
               <CardHeader>
-                <CardTitle className="text-lg">About the Requester</CardTitle>
+                <CardTitle className="text-xl">Posted By</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarFallback>
-                      <User className="h-6 w-6" />
+              <CardContent className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarFallback className="text-xl bg-primary/10">
+                      <User className="h-8 w-8" />
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex-1">
-                    <p className="font-semibold">
-                      {request.profiles?.display_name || "Anonymous"}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Star className="h-4 w-4 fill-secondary text-secondary" />
-                      <span className="text-sm font-medium">
-                        {request.profiles?.reputation_score?.toFixed(1) || "0.0"}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        ({request.profiles?.completed_deals || 0} deals)
-                      </span>
-                    </div>
+                  <div>
+                    <p className="text-xl font-bold">{request.profiles.username}</p>
+                    {request.profiles.full_name && (
+                      <p className="text-sm text-muted-foreground">{request.profiles.full_name}</p>
+                    )}
                   </div>
                 </div>
 
-                {request.profiles?.bio && (
-                  <p className="text-sm text-muted-foreground">{request.profiles.bio}</p>
+                {badges.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Badges</p>
+                    <BadgeDisplay badges={badges as any} />
+                  </div>
                 )}
 
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Clock className="h-4 w-4" />
-                  <span>Responds in ~{request.profiles?.response_time_hours || 24} hours</span>
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Reputation</span>
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="font-bold">{request.profiles.reputation_score}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Completed Deals</span>
+                    <span className="font-bold">{request.profiles.completed_deals}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Success Rate</span>
+                    <span className="font-bold text-success">{completionRate}%</span>
+                  </div>
                 </div>
 
-                {badges.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Badges</p>
-                    <div className="space-y-2">
-                      {badges.map((badge: any) => {
-                        const BadgeIcon = badgeIcons[badge.name];
-                        if (!BadgeIcon) return null;
-                        return (
-                          <div
-                            key={badge.name}
-                            className="flex items-start gap-2 p-2 bg-muted rounded-lg"
-                          >
-                            <BadgeIcon.icon className={`h-4 w-4 ${BadgeIcon.color} mt-0.5`} />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{BadgeIcon.label}</p>
-                              <p className="text-xs text-muted-foreground">{badge.description}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                <Separator />
+
+                {!isOwnRequest && request.status === "open" && (
+                  <Button
+                    onClick={handleAcceptRequest}
+                    className="w-full gap-2 h-12 text-lg"
+                    disabled={accepting}
+                  >
+                    {accepting ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-5 w-5" />
+                        Accept Request
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                {isOwnRequest && (
+                  <div className="p-3 rounded-lg bg-muted/50 text-center">
+                    <p className="text-sm text-muted-foreground">This is your request</p>
                   </div>
                 )}
               </CardContent>
             </Card>
-
-            {/* Action Card */}
-            {!isOwner && (
-              <Card>
-                <CardContent className="pt-6 space-y-3">
-                  <Button className="w-full" size="lg" onClick={handleAcceptRequest}>
-                    <CheckCircle className="mr-2 h-5 w-5" />
-                    Accept Request
-                  </Button>
-                  <Button variant="outline" className="w-full" size="lg">
-                    <MessageSquare className="mr-2 h-5 w-5" />
-                    Send Message
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-
-            {isOwner && (
-              <Card>
-                <CardContent className="pt-6 space-y-3">
-                  <p className="text-sm text-muted-foreground text-center mb-4">
-                    This is your request
-                  </p>
-                  <Button variant="outline" className="w-full">
-                    Edit Request
-                  </Button>
-                  <Button variant="destructive" className="w-full">
-                    Delete Request
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
-}
+};
+
+export default RequestDetail;
