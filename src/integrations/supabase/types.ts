@@ -14,37 +14,84 @@ export type Database = {
   }
   public: {
     Tables: {
+      conversations: {
+        Row: {
+          created_at: string | null
+          id: string
+          participant1_id: string
+          participant2_id: string
+          request_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          participant1_id: string
+          participant2_id: string
+          request_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          participant1_id?: string
+          participant2_id?: string
+          request_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           accepter_id: string
+          accepter_task_completed: boolean | null
+          accepter_verified_requester: boolean | null
           completed_at: string | null
           created_at: string | null
           id: string
           prerequisite_completed: boolean | null
           request_id: string
           requester_id: string
+          requester_task_completed: boolean | null
+          requester_verified_accepter: boolean | null
           status: Database["public"]["Enums"]["deal_status"] | null
           updated_at: string | null
         }
         Insert: {
           accepter_id: string
+          accepter_task_completed?: boolean | null
+          accepter_verified_requester?: boolean | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
           prerequisite_completed?: boolean | null
           request_id: string
           requester_id: string
+          requester_task_completed?: boolean | null
+          requester_verified_accepter?: boolean | null
           status?: Database["public"]["Enums"]["deal_status"] | null
           updated_at?: string | null
         }
         Update: {
           accepter_id?: string
+          accepter_task_completed?: boolean | null
+          accepter_verified_requester?: boolean | null
           completed_at?: string | null
           created_at?: string | null
           id?: string
           prerequisite_completed?: boolean | null
           request_id?: string
           requester_id?: string
+          requester_task_completed?: boolean | null
+          requester_verified_accepter?: boolean | null
           status?: Database["public"]["Enums"]["deal_status"] | null
           updated_at?: string | null
         }
@@ -142,6 +189,7 @@ export type Database = {
       }
       messages: {
         Row: {
+          conversation_id: string | null
           created_at: string | null
           id: string
           is_read: boolean | null
@@ -152,6 +200,7 @@ export type Database = {
           subject: string
         }
         Insert: {
+          conversation_id?: string | null
           created_at?: string | null
           id?: string
           is_read?: boolean | null
@@ -162,6 +211,7 @@ export type Database = {
           subject: string
         }
         Update: {
+          conversation_id?: string | null
           created_at?: string | null
           id?: string
           is_read?: boolean | null
@@ -172,6 +222,13 @@ export type Database = {
           subject?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_receiver_id_fkey"
             columns: ["receiver_id"]
@@ -263,6 +320,48 @@ export type Database = {
           work_experience?: string | null
         }
         Relationships: []
+      }
+      request_interests: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string | null
+          request_id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          request_id: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          request_id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_interests_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_interests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       requests: {
         Row: {

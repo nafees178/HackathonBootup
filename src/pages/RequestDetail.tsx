@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
 import { ContactDialog } from "@/components/ContactDialog";
+import { PendingDeals } from "@/components/PendingDeals";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -128,12 +129,12 @@ const RequestDetail = () => {
         request_id: request.id,
         requester_id: request.user_id,
         accepter_id: currentUserId,
-        status: request.has_prerequisite ? "prerequisite_pending" : "active",
+        status: "pending",
       }] as any);
 
       if (error) throw error;
 
-      toast.success("Deal initiated! The requester will be notified.");
+      toast.success("Request sent! Waiting for poster approval.");
       navigate("/marketplace");
     } catch (error: any) {
       toast.error(error.message);
@@ -176,7 +177,7 @@ const RequestDetail = () => {
     <div className="container mx-auto px-4 py-8">
       <Button
         variant="ghost"
-        onClick={() => navigate("/marketplace")}
+        onClick={() => navigate(-1)}
         className="mb-6 gap-2"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -265,7 +266,10 @@ const RequestDetail = () => {
               <CardTitle>Posted By</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center gap-4">
+              <div 
+                className="flex items-center gap-4 cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => navigate(`/profile/${request.profiles.id}`)}
+              >
                 <Avatar className="h-16 w-16">
                   <AvatarFallback><User className="h-8 w-8" /></AvatarFallback>
                 </Avatar>
@@ -314,15 +318,29 @@ const RequestDetail = () => {
 
               {!isOwnRequest && request.status === "open" && (
                 <div className="space-y-3">
+                  <Button 
+                    onClick={handleAcceptRequest} 
+                    disabled={accepting}
+                    className="w-full gap-2"
+                  >
+                    {accepting ? (
+                      <>
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-5 w-5" />
+                        Accept Request
+                      </>
+                    )}
+                  </Button>
                   <ContactDialog
                     receiverId={request.user_id}
                     receiverUsername={request.profiles.username}
                     requestId={request.id}
                     requestTitle={request.title}
                   />
-                  <Button onClick={handleAcceptRequest} className="w-full gap-2" disabled={accepting}>
-                    {accepting ? (<><Loader2 className="h-5 w-5 animate-spin" />Processing...</>) : (<><CheckCircle className="h-5 w-5" />Accept Request</>)}
-                  </Button>
                 </div>
               )}
 
@@ -333,6 +351,8 @@ const RequestDetail = () => {
               )}
             </CardContent>
           </Card>
+
+          {isOwnRequest && <PendingDeals requestId={request.id} />}
         </div>
       </div>
     </div>

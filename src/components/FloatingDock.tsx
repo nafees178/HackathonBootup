@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 
 const dockItems = [
-  { title: "Home", url: "/", icon: Home },
+  { title: "Dashboard", url: "/", icon: Home },
   { title: "Marketplace", url: "/marketplace", icon: Search },
   { title: "Post Request", url: "/create-request", icon: Plus },
   { title: "Messages", url: "/messages", icon: MessageSquare },

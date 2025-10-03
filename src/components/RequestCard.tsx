@@ -17,6 +17,7 @@ interface RequestCardProps {
   category: string;
   hasPrerequisite: boolean;
   createdAt: string;
+  userId: string;
   username: string;
   reputationScore: number;
   location?: string;
@@ -42,6 +43,7 @@ export const RequestCard = ({
   category,
   hasPrerequisite,
   createdAt,
+  userId,
   username,
   reputationScore,
   location,
@@ -55,7 +57,10 @@ export const RequestCard = ({
         </div>
 
         <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
+          <div 
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => window.location.href = `/profile/${userId}`}
+          >
             <Avatar className="h-6 w-6">
               <AvatarFallback className="text-xs">
                 <User className="h-3 w-3" />

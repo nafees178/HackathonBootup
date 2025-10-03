@@ -11,6 +11,7 @@ import CreateRequest from "./pages/CreateRequest";
 import Profile from "./pages/Profile";
 import PublicProfile from "./pages/PublicProfile";
 import RequestDetail from "./pages/RequestDetail";
+import Conversations from "./pages/Conversations";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
 
@@ -30,7 +31,8 @@ const App = () => (
           <Route path="/profile" element={<Layout><Profile /></Layout>} />
           <Route path="/profile/:userId" element={<Layout><PublicProfile /></Layout>} />
           <Route path="/request/:id" element={<Layout><RequestDetail /></Layout>} />
-          <Route path="/messages" element={<Layout><Messages /></Layout>} />
+          <Route path="/messages" element={<Layout><Conversations /></Layout>} />
+          <Route path="/messages/legacy" element={<Layout><Messages /></Layout>} />
           <Route path="*" element={<Layout><NotFound /></Layout>} />
         </Routes>
       </BrowserRouter>

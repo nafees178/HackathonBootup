@@ -3,9 +3,9 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { RequestCard } from "@/components/RequestCard";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Plus } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Plus, TrendingUp, MessageSquare, User, Star, CheckCircle, Award, ArrowRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Request {
@@ -20,148 +20,289 @@ interface Request {
   has_prerequisite: boolean;
   created_at: string;
   profiles: {
+    id: string;
     username: string;
     reputation_score: number;
     location: string | null;
   };
 }
 
+interface UserProfile {
+  username: string;
+  reputation_score: number;
+  total_deals: number;
+  completed_deals: number;
+}
+
 const Index = () => {
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [recentRequests, setRecentRequests] = useState<Request[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchRequests();
+    fetchData();
   }, []);
 
-  const fetchRequests = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      setUserId(session?.user?.id || null);
+
+      // Fetch recent requests
+      const { data: requestsData, error: requestsError } = await supabase
         .from("requests")
         .select(`
           *,
-          profiles (username, reputation_score, location)
+          profiles (id, username, reputation_score, location)
         `)
         .eq("status", "open")
         .order("created_at", { ascending: false })
-        .limit(12);
+        .limit(8);
 
-      if (error) throw error;
-      setRequests(data || []);
+      if (requestsError) throw requestsError;
+      setRecentRequests(requestsData || []);
+
+      // Fetch user profile if logged in
+      if (session) {
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("username, reputation_score, total_deals, completed_deals")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profileError) throw profileError;
+        setUserProfile(profileData);
+      }
     } catch (error) {
-      console.error("Error fetching requests:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredRequests = requests.filter((request) => {
-    const matchesSearch =
-      request.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || request.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  const completionRate = userProfile && userProfile.total_deals > 0 
+    ? Math.round((userProfile.completed_deals / userProfile.total_deals) * 100)
+    : 0;
 
-  const categories = ["all", ...Array.from(new Set(requests.map((r) => r.category)))];
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Tit4Tat</h1>
-            <p className="text-muted-foreground">Discover requests and start trading</p>
+        {/* Hero Section */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-5xl font-bold mb-3">
+                Welcome {userProfile ? `back, ${userProfile.username}` : "to Tit4Tat"}!
+              </h1>
+              <p className="text-xl text-muted-foreground">
+                Your marketplace for skill and item exchanges
+              </p>
+            </div>
+            {userProfile && (
+              <Link to="/profile">
+                <Avatar className="h-20 w-20 border-4 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors">
+                  <AvatarFallback className="text-2xl">
+                    <User className="h-10 w-10" />
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+            )}
           </div>
-          <Link to="/create-request">
-            <Button size="lg" className="gap-2">
-              <Plus className="h-5 w-5" />
-              Post Request
-            </Button>
-          </Link>
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Link to="/create-request" className="block">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Plus className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Post Request</h3>
+                      <p className="text-sm text-muted-foreground">Share what you need</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/marketplace" className="block">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                      <TrendingUp className="h-6 w-6 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Browse Marketplace</h3>
+                      <p className="text-sm text-muted-foreground">Find opportunities</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/messages" className="block">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
+                      <MessageSquare className="h-6 w-6 text-success" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Messages</h3>
+                      <p className="text-sm text-muted-foreground">Check conversations</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          </div>
+
+          {/* User Stats */}
+          {userProfile && (
+            <Card className="mb-8 bg-gradient-to-br from-primary/5 to-accent/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-primary" />
+                  Your Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <Star className="h-6 w-6 text-yellow-500" />
+                      <span className="text-4xl font-bold">{userProfile.reputation_score}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Reputation Score</p>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <CheckCircle className="h-6 w-6 text-success" />
+                      <span className="text-4xl font-bold">{userProfile.completed_deals}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Completed Deals</p>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <TrendingUp className="h-6 w-6 text-accent" />
+                      <span className="text-4xl font-bold">{completionRate}%</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">Success Rate</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search requests..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full md:w-[200px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat === "all" ? "All Categories" : cat}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {!loading && (
-          <p className="text-sm text-muted-foreground mb-6">
-            {filteredRequests.length} request{filteredRequests.length !== 1 ? 's' : ''} available
-          </p>
-        )}
-
-        {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {[...Array(8)].map((_, i) => (
-              <Skeleton key={i} className="h-96 w-full" />
-            ))}
-          </div>
-        ) : filteredRequests.length === 0 ? (
-          <div className="text-center py-20">
-            <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-2xl font-semibold mb-2">No requests found</h3>
-            <p className="text-muted-foreground mb-6">Try adjusting your search or filters</p>
-            <Link to="/create-request">
-              <Button className="gap-2">
-                <Plus className="h-5 w-5" />
-                Post a Request
+        {/* Recent Requests */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Recent Requests</h2>
+              <p className="text-muted-foreground">Fresh opportunities from the community</p>
+            </div>
+            <Link to="/marketplace">
+              <Button variant="outline" className="gap-2">
+                View All <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredRequests.map((request) => (
-              <RequestCard
-                key={request.id}
-                id={request.id}
-                title={request.title}
-                description={request.description}
-                requestType={request.request_type}
-                offering={request.offering}
-                seeking={request.seeking}
-                moneyAmount={request.money_amount}
-                category={request.category}
-                hasPrerequisite={request.has_prerequisite}
-                createdAt={request.created_at}
-                username={request.profiles.username}
-                reputationScore={request.profiles.reputation_score}
-                location={request.profiles.location}
-              />
-            ))}
-          </div>
-        )}
 
-        <div className="text-center mt-12">
-          <Link to="/marketplace">
-            <Button variant="outline" size="lg">
-              View All Requests
-            </Button>
-          </Link>
+          {recentRequests.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No requests yet</h3>
+                <p className="text-muted-foreground mb-6">Be the first to post a request!</p>
+                <Link to="/create-request">
+                  <Button className="gap-2">
+                    <Plus className="h-5 w-5" />
+                    Post a Request
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {recentRequests.map((request) => (
+                <RequestCard
+                  key={request.id}
+                  id={request.id}
+                  title={request.title}
+                  description={request.description}
+                  requestType={request.request_type}
+                  offering={request.offering}
+                  seeking={request.seeking}
+                  moneyAmount={request.money_amount}
+                  category={request.category}
+                  hasPrerequisite={request.has_prerequisite}
+                  createdAt={request.created_at}
+                  userId={request.profiles.id}
+                  username={request.profiles.username}
+                  reputationScore={request.profiles.reputation_score}
+                  location={request.profiles.location}
+                />
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Info Section */}
+        <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20">
+          <CardContent className="py-12">
+            <div className="text-center max-w-3xl mx-auto">
+              <h2 className="text-3xl font-bold mb-4">How Tit4Tat Works</h2>
+              <p className="text-lg text-muted-foreground mb-8">
+                Exchange skills, items, or services with people in your community. Post what you need, 
+                browse what others offer, and create mutually beneficial deals.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <div>
+                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3 mx-auto md:mx-0">
+                    <span className="text-2xl font-bold text-primary">1</span>
+                  </div>
+                  <h3 className="font-semibold mb-2 text-center md:text-left">Post Your Request</h3>
+                  <p className="text-sm text-muted-foreground text-center md:text-left">
+                    Share what you're offering and what you're looking for
+                  </p>
+                </div>
+                <div>
+                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3 mx-auto md:mx-0">
+                    <span className="text-2xl font-bold text-primary">2</span>
+                  </div>
+                  <h3 className="font-semibold mb-2 text-center md:text-left">Connect & Agree</h3>
+                  <p className="text-sm text-muted-foreground text-center md:text-left">
+                    Review interested users and start a conversation
+                  </p>
+                </div>
+                <div>
+                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3 mx-auto md:mx-0">
+                    <span className="text-2xl font-bold text-primary">3</span>
+                  </div>
+                  <h3 className="font-semibold mb-2 text-center md:text-left">Complete & Rate</h3>
+                  <p className="text-sm text-muted-foreground text-center md:text-left">
+                    Exchange and build your reputation with successful deals
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

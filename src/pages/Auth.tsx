@@ -20,7 +20,7 @@ const Auth = () => {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        navigate("/marketplace");
+        navigate("/");
       }
     });
   }, [navigate]);
@@ -65,7 +65,7 @@ const Auth = () => {
       if (error) throw error;
 
       toast.success("Signed in successfully!");
-      navigate("/marketplace");
+      navigate("/");
     } catch (error: any) {
       toast.error(error.message);
     } finally {
