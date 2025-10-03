@@ -2,7 +2,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Clock, User, ArrowRight, AlertCircle, TrendingUp } from "lucide-react";
+import { Clock, User, ArrowRight, AlertCircle, MapPin } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 
@@ -19,6 +19,7 @@ interface RequestCardProps {
   createdAt: string;
   username: string;
   reputationScore: number;
+  location?: string;
 }
 
 const requestTypeLabels: Record<string, string> = {
@@ -43,64 +44,59 @@ export const RequestCard = ({
   createdAt,
   username,
   reputationScore,
+  location,
 }: RequestCardProps) => {
   return (
-    <Card className="group relative overflow-hidden border-2 border-primary/10 hover:border-primary/30 transition-all duration-300 hover:shadow-glow bg-gradient-to-br from-card to-card/50 backdrop-blur">
-      {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
-      <CardHeader className="relative">
+    <Card className="hover:border-primary/50 transition-all duration-200">
+      <CardHeader>
         <div className="flex items-start justify-between gap-4 mb-3">
-          <CardTitle className="text-xl group-hover:text-primary transition-colors line-clamp-2">
-            {title}
-          </CardTitle>
-          <Badge variant="outline" className="shrink-0 border-primary/20 bg-primary/5">
-            {category}
-          </Badge>
+          <CardTitle className="text-lg line-clamp-2">{title}</CardTitle>
+          <Badge variant="outline">{category}</Badge>
         </div>
 
-        <div className="flex items-center gap-3 text-sm">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
-              <AvatarFallback className="text-xs bg-primary/10">
+              <AvatarFallback className="text-xs">
                 <User className="h-3 w-3" />
               </AvatarFallback>
             </Avatar>
-            <span className="font-medium text-foreground">{username}</span>
+            <span className="font-medium">{username}</span>
           </div>
-          
-          <div className="flex items-center gap-1 text-yellow-500">
-            <TrendingUp className="h-3 w-3" />
-            <span className="font-medium">{reputationScore}</span>
-          </div>
+          <span className="text-xs">★ {reputationScore}</span>
         </div>
+
+        {location && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+            <MapPin className="h-3 w-3" />
+            <span>{location}</span>
+          </div>
+        )}
       </CardHeader>
 
-      <CardContent className="relative space-y-4">
-        <p className="text-muted-foreground text-sm line-clamp-2 leading-relaxed">
-          {description}
-        </p>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
-            <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Offering</p>
-            <p className="font-medium text-sm line-clamp-1">{offering}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2 rounded bg-muted/30">
+            <p className="text-xs text-muted-foreground mb-1">Offering</p>
+            <p className="font-medium text-xs line-clamp-1">{offering}</p>
           </div>
-          <div className="p-3 rounded-lg bg-accent/5 border border-accent/10">
-            <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Seeking</p>
-            <p className="font-medium text-sm line-clamp-1">
+          <div className="p-2 rounded bg-muted/30">
+            <p className="text-xs text-muted-foreground mb-1">Seeking</p>
+            <p className="font-medium text-xs line-clamp-1">
               {seeking}
-              {moneyAmount && <span className="block text-accent font-bold">₹{moneyAmount}</span>}
+              {moneyAmount && <span className="block text-primary">₹{moneyAmount}</span>}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge className="text-xs bg-primary/10 text-primary border-primary/20">
-            {requestTypeLabels[requestType] || requestType}
+          <Badge variant="secondary" className="text-xs">
+            {requestTypeLabels[requestType]}
           </Badge>
           {hasPrerequisite && (
-            <Badge variant="outline" className="gap-1 text-xs border-destructive/20 text-destructive">
+            <Badge variant="outline" className="gap-1 text-xs text-destructive border-destructive/20">
               <AlertCircle className="h-3 w-3" />
               Prerequisites
             </Badge>
@@ -113,14 +109,11 @@ export const RequestCard = ({
         </div>
       </CardContent>
 
-      <CardFooter className="relative">
+      <CardFooter>
         <Link to={`/request/${id}`} className="w-full">
-          <Button className="w-full gap-2 group/btn relative overflow-hidden">
-            <span className="relative z-10 flex items-center gap-2">
-              View Details
-              <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
-            </span>
-            <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+          <Button className="w-full gap-2" size="sm">
+            View Details
+            <ArrowRight className="h-4 w-4" />
           </Button>
         </Link>
       </CardFooter>

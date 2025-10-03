@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Package } from "lucide-react";
+import { Loader2, Package } from "lucide-react";
 
 const CreateRequest = () => {
   const [loading, setLoading] = useState(false);
@@ -70,40 +69,27 @@ const CreateRequest = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Animated background */}
-      <div className="fixed inset-0 -z-10" style={{ background: "var(--gradient-mesh)" }} />
-      
-      <Navbar />
-
-      <div className="container mx-auto px-4 py-12">
-        <div className="text-center mb-12 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Create New Request</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            What Do You Need?
-          </h1>
-          <p className="text-xl text-muted-foreground">Share your request with the community</p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Post a Request</h1>
+          <p className="text-muted-foreground">Share what you need with the community</p>
         </div>
 
-        <Card className="max-w-3xl mx-auto border-2 border-primary/20 bg-card/80 backdrop-blur-xl relative animate-slide-up">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 rounded-lg" />
-          
-          <CardHeader className="relative">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Package className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-3xl">Post a Request</CardTitle>
-                <CardDescription>Fill in the details below</CardDescription>
+                <CardTitle className="text-2xl">Request Details</CardTitle>
+                <CardDescription>Fill in the information below</CardDescription>
               </div>
             </div>
           </CardHeader>
           
-          <CardContent className="relative">
+          <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="title">Request Title *</Label>
@@ -112,7 +98,6 @@ const CreateRequest = () => {
                   placeholder="e.g., Need website design for my startup"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
                   required
                 />
               </div>
@@ -125,7 +110,6 @@ const CreateRequest = () => {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={4}
-                  className="bg-background/50 border-primary/20 focus:border-primary/40"
                   required
                 />
               </div>
@@ -137,7 +121,7 @@ const CreateRequest = () => {
                     value={formData.requestType}
                     onValueChange={(value) => setFormData({ ...formData, requestType: value })}
                   >
-                    <SelectTrigger className="bg-background/50 border-primary/20 h-12">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -158,7 +142,6 @@ const CreateRequest = () => {
                     placeholder="e.g., Design, Coding, Tutoring"
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
                     required
                   />
                 </div>
@@ -172,7 +155,6 @@ const CreateRequest = () => {
                     placeholder="e.g., React tutoring"
                     value={formData.offering}
                     onChange={(e) => setFormData({ ...formData, offering: e.target.value })}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
                     required
                   />
                 </div>
@@ -184,7 +166,6 @@ const CreateRequest = () => {
                     placeholder="e.g., Logo design"
                     value={formData.seeking}
                     onChange={(e) => setFormData({ ...formData, seeking: e.target.value })}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
                     required
                   />
                 </div>
@@ -199,12 +180,11 @@ const CreateRequest = () => {
                     placeholder="500"
                     value={formData.moneyAmount}
                     onChange={(e) => setFormData({ ...formData, moneyAmount: e.target.value })}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40 h-12"
                   />
                 </div>
               )}
 
-              <div className="space-y-4 p-4 rounded-lg bg-muted/30 border border-primary/10">
+              <div className="space-y-4 p-4 rounded-lg bg-muted/30 border">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="hasPrerequisite"
@@ -219,7 +199,7 @@ const CreateRequest = () => {
                 </div>
 
                 {formData.hasPrerequisite && (
-                  <div className="space-y-2 mt-3">
+                  <div className="space-y-2">
                     <Label htmlFor="prerequisiteDescription">Prerequisite Description *</Label>
                     <Textarea
                       id="prerequisiteDescription"
@@ -229,19 +209,15 @@ const CreateRequest = () => {
                         setFormData({ ...formData, prerequisiteDescription: e.target.value })
                       }
                       rows={3}
-                      className="bg-background/50 border-primary/20 focus:border-primary/40"
                       required={formData.hasPrerequisite}
                     />
                   </div>
                 )}
               </div>
 
-              <Button type="submit" className="w-full h-14 text-lg relative group overflow-hidden" disabled={loading}>
-                <span className="relative z-10 flex items-center gap-2">
-                  {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-                  Post Request
-                </span>
-                <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Button type="submit" className="w-full" size="lg" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Post Request
               </Button>
             </form>
           </CardContent>

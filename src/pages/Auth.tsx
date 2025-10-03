@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Package } from "lucide-react";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -74,31 +74,20 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated background */}
-      <div className="fixed inset-0 -z-10" style={{ background: "var(--gradient-mesh)" }} />
-      <div className="absolute top-20 left-20 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-pulse" />
-
-      <Card className="w-full max-w-md border-2 border-primary/20 bg-card/80 backdrop-blur-xl relative animate-slide-up">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 rounded-lg" />
-        
-        <CardHeader className="text-center relative">
-          <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4 mx-auto">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Join TrustTrade</span>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <Package className="h-8 w-8" />
+            <span className="text-3xl font-bold">Tit4Tat</span>
           </div>
-          <CardTitle className="text-4xl bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Welcome
-          </CardTitle>
-          <CardDescription className="text-base">
-            Sign in or create an account to start trading
-          </CardDescription>
+          <CardTitle className="text-3xl">Welcome</CardTitle>
+          <CardDescription>Sign in or create an account to start trading</CardDescription>
         </CardHeader>
         
-        <CardContent className="relative">
+        <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
@@ -113,7 +102,6 @@ const Auth = () => {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40"
                     required
                   />
                 </div>
@@ -124,16 +112,12 @@ const Auth = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40"
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full h-12 relative group overflow-hidden" disabled={loading}>
-                  <span className="relative z-10 flex items-center gap-2">
-                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Sign In
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Sign In
                 </Button>
               </form>
             </TabsContent>
@@ -148,7 +132,6 @@ const Auth = () => {
                     placeholder="johndoe"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40"
                     required
                   />
                 </div>
@@ -160,7 +143,6 @@ const Auth = () => {
                     placeholder="John Doe"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40"
                   />
                 </div>
                 <div className="space-y-2">
@@ -171,7 +153,6 @@ const Auth = () => {
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40"
                     required
                   />
                 </div>
@@ -182,17 +163,13 @@ const Auth = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="bg-background/50 border-primary/20 focus:border-primary/40"
                     required
                     minLength={6}
                   />
                 </div>
-                <Button type="submit" className="w-full h-12 relative group overflow-hidden" disabled={loading}>
-                  <span className="relative z-10 flex items-center gap-2">
-                    {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-                    Create Account
-                  </span>
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Account
                 </Button>
               </form>
             </TabsContent>

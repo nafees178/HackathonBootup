@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Navbar } from "@/components/Navbar";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
+import { ContactDialog } from "@/components/ContactDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,8 @@ import {
   Package, 
   DollarSign,
   CheckCircle,
-  Loader2
+  Loader2,
+  MapPin
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -40,14 +41,11 @@ interface RequestData {
     id: string;
     username: string;
     full_name: string | null;
+    location: string | null;
     reputation_score: number;
     total_deals: number;
     completed_deals: number;
   };
-}
-
-interface UserBadge {
-  badge_type: string;
 }
 
 const requestTypeLabels: Record<string, string> = {
@@ -88,6 +86,7 @@ const RequestDetail = () => {
             id,
             username,
             full_name,
+            location,
             reputation_score,
             total_deals,
             completed_deals
@@ -106,7 +105,7 @@ const RequestDetail = () => {
       if (badgesError) throw badgesError;
 
       setRequest(requestData);
-      setBadges(badgesData.map((b: UserBadge) => b.badge_type));
+      setBadges(badgesData.map((b) => b.badge_type));
     } catch (error) {
       console.error("Error fetching request:", error);
       toast.error("Failed to load request");
@@ -145,12 +144,9 @@ const RequestDetail = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </div>
     );
@@ -158,18 +154,15 @@ const RequestDetail = () => {
 
   if (!request) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <Card>
-            <CardContent className="pt-6 text-center">
-              <p className="text-muted-foreground">Request not found</p>
-              <Button onClick={() => navigate("/marketplace")} className="mt-4">
-                Back to Marketplace
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-muted-foreground">Request not found</p>
+            <Button onClick={() => navigate("/marketplace")} className="mt-4">
+              Back to Marketplace
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -180,189 +173,166 @@ const RequestDetail = () => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <div className="container mx-auto px-4 py-8">
+      <Button
+        variant="ghost"
+        onClick={() => navigate("/marketplace")}
+        className="mb-6 gap-2"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </Button>
 
-      <div className="container mx-auto px-4 py-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/marketplace")}
-          className="mb-6 gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Marketplace
-        </Button>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="border-2 border-primary/20">
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4 mb-4">
-                  <div className="flex-1">
-                    <CardTitle className="text-3xl mb-2">{request.title}</CardTitle>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>Posted {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
-                    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div className="flex-1">
+                  <CardTitle className="text-3xl mb-2">{request.title}</CardTitle>
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
                   </div>
-                  <Badge variant="outline" className="text-lg px-4 py-1">
-                    {request.category}
-                  </Badge>
                 </div>
+                <Badge variant="outline" className="text-base px-4 py-1">{request.category}</Badge>
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <Badge className="text-sm px-3 py-1">
-                    {requestTypeLabels[request.request_type]}
-                  </Badge>
-                  {request.status === "open" ? (
-                    <Badge className="bg-success text-success-foreground">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Open
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">Closed</Badge>
-                  )}
-                </div>
-              </CardHeader>
+              <div className="flex items-center gap-3">
+                <Badge>{requestTypeLabels[request.request_type]}</Badge>
+                {request.status === "open" ? (
+                  <Badge className="bg-success"><CheckCircle className="h-3 w-3 mr-1" />Open</Badge>
+                ) : (
+                  <Badge variant="secondary">Closed</Badge>
+                )}
+              </div>
+            </CardHeader>
+
+            <Separator />
+
+            <CardContent className="pt-6 space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Description</h3>
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{request.description}</p>
+              </div>
 
               <Separator />
 
-              <CardContent className="pt-6 space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Description</h3>
-                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                    {request.description}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 rounded-lg border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Package className="h-5 w-5 text-primary" />
+                    <h4 className="font-semibold">Offering</h4>
+                  </div>
+                  <p className="text-lg">{request.offering}</p>
+                </div>
+
+                <div className="p-4 rounded-lg border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className="h-5 w-5 text-accent" />
+                    <h4 className="font-semibold">Seeking</h4>
+                  </div>
+                  <p className="text-lg">
+                    {request.seeking}
+                    {request.money_amount && (
+                      <span className="block text-2xl font-bold text-accent mt-1">₹{request.money_amount}</span>
+                    )}
                   </p>
                 </div>
+              </div>
 
-                <Separator />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Package className="h-5 w-5 text-primary" />
-                      <h4 className="font-semibold">Offering</h4>
-                    </div>
-                    <p className="text-lg">{request.offering}</p>
-                  </div>
-
-                  <div className="p-4 rounded-lg bg-gradient-to-br from-accent/10 to-accent/5 border border-accent/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <DollarSign className="h-5 w-5 text-accent" />
-                      <h4 className="font-semibold">Seeking</h4>
-                    </div>
-                    <p className="text-lg">
-                      {request.seeking}
-                      {request.money_amount && (
-                        <span className="block text-2xl font-bold text-accent mt-1">
-                          ₹{request.money_amount}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                {request.has_prerequisite && request.prerequisite_description && (
-                  <>
-                    <Separator />
-                    <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
-                        <div>
-                          <h4 className="font-semibold mb-2">Prerequisites Required</h4>
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            {request.prerequisite_description}
-                          </p>
-                        </div>
+              {request.has_prerequisite && request.prerequisite_description && (
+                <>
+                  <Separator />
+                  <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
+                      <div>
+                        <h4 className="font-semibold mb-2">Prerequisites Required</h4>
+                        <p className="text-sm text-muted-foreground">{request.prerequisite_description}</p>
                       </div>
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar - User Info */}
-          <div className="space-y-6">
-            <Card className="border-primary/20">
-              <CardHeader>
-                <CardTitle className="text-xl">Posted By</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16">
-                    <AvatarFallback className="text-xl bg-primary/10">
-                      <User className="h-8 w-8" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="text-xl font-bold">{request.profiles.username}</p>
-                    {request.profiles.full_name && (
-                      <p className="text-sm text-muted-foreground">{request.profiles.full_name}</p>
-                    )}
                   </div>
-                </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-                {badges.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">Badges</p>
-                    <BadgeDisplay badges={badges as any} />
-                  </div>
-                )}
-
-                <Separator />
-
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Reputation</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="font-bold">{request.profiles.reputation_score}</span>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Posted By</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarFallback><User className="h-8 w-8" /></AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-xl font-bold">{request.profiles.username}</p>
+                  {request.profiles.full_name && <p className="text-sm text-muted-foreground">{request.profiles.full_name}</p>}
+                  {request.profiles.location && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                      <MapPin className="h-3 w-3" />
+                      <span>{request.profiles.location}</span>
                     </div>
-                  </div>
+                  )}
+                </div>
+              </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Completed Deals</span>
-                    <span className="font-bold">{request.profiles.completed_deals}</span>
-                  </div>
+              {badges.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-2">Badges</p>
+                  <BadgeDisplay badges={badges as any} />
+                </div>
+              )}
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Success Rate</span>
-                    <span className="font-bold text-success">{completionRate}%</span>
+              <Separator />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Reputation</span>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 text-yellow-500" />
+                    <span className="font-bold">{request.profiles.reputation_score}</span>
                   </div>
                 </div>
 
-                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Completed</span>
+                  <span className="font-bold">{request.profiles.completed_deals}</span>
+                </div>
 
-                {!isOwnRequest && request.status === "open" && (
-                  <Button
-                    onClick={handleAcceptRequest}
-                    className="w-full gap-2 h-12 text-lg"
-                    disabled={accepting}
-                  >
-                    {accepting ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-5 w-5" />
-                        Accept Request
-                      </>
-                    )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Success Rate</span>
+                  <span className="font-bold text-success">{completionRate}%</span>
+                </div>
+              </div>
+
+              <Separator />
+
+              {!isOwnRequest && request.status === "open" && (
+                <div className="space-y-3">
+                  <ContactDialog
+                    receiverId={request.user_id}
+                    receiverUsername={request.profiles.username}
+                    requestId={request.id}
+                    requestTitle={request.title}
+                  />
+                  <Button onClick={handleAcceptRequest} className="w-full gap-2" disabled={accepting}>
+                    {accepting ? (<><Loader2 className="h-5 w-5 animate-spin" />Processing...</>) : (<><CheckCircle className="h-5 w-5" />Accept Request</>)}
                   </Button>
-                )}
+                </div>
+              )}
 
-                {isOwnRequest && (
-                  <div className="p-3 rounded-lg bg-muted/50 text-center">
-                    <p className="text-sm text-muted-foreground">This is your request</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+              {isOwnRequest && (
+                <div className="p-3 rounded-lg bg-muted/50 text-center">
+                  <p className="text-sm text-muted-foreground">This is your request</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

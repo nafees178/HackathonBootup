@@ -140,6 +140,61 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          receiver_id: string
+          request_id: string | null
+          sender_id: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          receiver_id: string
+          request_id?: string | null
+          sender_id: string
+          subject: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          receiver_id?: string
+          request_id?: string | null
+          sender_id?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_receiver_id_fkey"
+            columns: ["receiver_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -148,7 +203,10 @@ export type Database = {
           created_at: string | null
           full_name: string | null
           id: string
+          location: string | null
+          phone: string | null
           reputation_score: number | null
+          skills: string[] | null
           total_deals: number | null
           updated_at: string | null
           username: string
@@ -160,7 +218,10 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id: string
+          location?: string | null
+          phone?: string | null
           reputation_score?: number | null
+          skills?: string[] | null
           total_deals?: number | null
           updated_at?: string | null
           username: string
@@ -172,7 +233,10 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id?: string
+          location?: string | null
+          phone?: string | null
           reputation_score?: number | null
+          skills?: string[] | null
           total_deals?: number | null
           updated_at?: string | null
           username?: string

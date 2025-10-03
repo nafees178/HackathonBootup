@@ -1,30 +1,39 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Navbar } from "@/components/Navbar";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, Star, CheckCircle, TrendingUp, Sparkles } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
+import { User, Star, CheckCircle, TrendingUp, Edit, MapPin, Phone } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Profile {
   username: string;
   full_name: string;
   bio: string;
+  location: string;
+  phone: string;
   reputation_score: number;
   total_deals: number;
   completed_deals: number;
-}
-
-interface Badge {
-  badge_type: string;
 }
 
 const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [badges, setBadges] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: "",
+    bio: "",
+    location: "",
+    phone: "",
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,7 +65,13 @@ const Profile = () => {
       if (badgesError) throw badgesError;
 
       setProfile(profileData);
-      setBadges(badgesData.map((b: Badge) => b.badge_type));
+      setFormData({
+        full_name: profileData.full_name || "",
+        bio: profileData.bio || "",
+        location: profileData.location || "",
+        phone: profileData.phone || "",
+      });
+      setBadges(badgesData.map((b) => b.badge_type));
     } catch (error) {
       console.error("Error fetching profile:", error);
     } finally {
@@ -64,24 +79,38 @@ const Profile = () => {
     }
   };
 
+  const handleUpdate = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { error } = await supabase
+        .from("profiles")
+        .update(formData)
+        .eq("id", session.user.id);
+
+      if (error) throw error;
+
+      toast.success("Profile updated successfully!");
+      setEditing(false);
+      fetchProfile();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <Skeleton className="h-96 w-full rounded-2xl" />
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="h-96 w-full" />
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="container mx-auto px-4 py-8">
-          <p className="text-center text-muted-foreground">Profile not found</p>
-        </div>
+      <div className="container mx-auto px-4 py-8">
+        <p className="text-center text-muted-foreground">Profile not found</p>
       </div>
     );
   }
@@ -91,90 +120,126 @@ const Profile = () => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Animated background */}
-      <div className="fixed inset-0 -z-10" style={{ background: "var(--gradient-mesh)" }} />
-      
-      <Navbar />
-
-      <div className="container mx-auto px-4 py-12">
-        <div className="text-center mb-12 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Your Profile</span>
-          </div>
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Trader Profile
-          </h1>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-4xl font-bold">My Profile</h1>
+          <Dialog open={editing} onOpenChange={setEditing}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Edit className="h-4 w-4" />
+                Edit Profile
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Edit Profile</DialogTitle>
+                <DialogDescription>Update your profile information</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Full Name</Label>
+                  <Input
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Bio</Label>
+                  <Textarea
+                    value={formData.bio}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Location</Label>
+                  <Input
+                    value={formData.location}
+                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    placeholder="City, Country"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Phone</Label>
+                  <Input
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="+1234567890"
+                  />
+                </div>
+                <Button onClick={handleUpdate} className="w-full">
+                  Save Changes
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
 
-        <Card className="border-2 border-primary/20 bg-card/80 backdrop-blur-xl relative animate-slide-up max-w-5xl mx-auto">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-accent/5 rounded-lg" />
-          
-          <CardHeader className="relative">
-            <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-              <Avatar className="h-32 w-32 border-4 border-primary/20 shadow-glow">
-                <AvatarFallback className="text-4xl bg-primary/10">
-                  <User className="h-16 w-16 text-primary" />
-                </AvatarFallback>
-              </Avatar>
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-start gap-6">
+              <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <User className="h-12 w-12 text-primary" />
+              </div>
 
               <div className="flex-1">
-                <CardTitle className="text-4xl mb-2">{profile.username}</CardTitle>
-                {profile.full_name && (
-                  <p className="text-lg text-muted-foreground mb-4">{profile.full_name}</p>
-                )}
+                <CardTitle className="text-3xl mb-2">{profile.username}</CardTitle>
+                {profile.full_name && <p className="text-lg text-muted-foreground mb-3">{profile.full_name}</p>}
                 {profile.bio && <p className="text-muted-foreground mb-4">{profile.bio}</p>}
                 
-                {badges.length > 0 && (
-                  <div className="mt-4 flex justify-center md:justify-start">
-                    <BadgeDisplay badges={badges as any} size="lg" />
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
+                  {profile.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      <span>{profile.location}</span>
+                    </div>
+                  )}
+                  {profile.phone && (
+                    <div className="flex items-center gap-1">
+                      <Phone className="h-4 w-4" />
+                      <span>{profile.phone}</span>
+                    </div>
+                  )}
+                </div>
+                
+                {badges.length > 0 && <BadgeDisplay badges={badges as any} />}
               </div>
             </div>
           </CardHeader>
-
-          <CardContent className="relative">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 hover:shadow-glow transition-all">
-                <CardContent className="pt-8 pb-8">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center mb-4">
-                      <Star className="h-8 w-8 text-primary" />
-                    </div>
-                    <p className="text-4xl font-bold text-primary mb-1">{profile.reputation_score}</p>
-                    <p className="text-sm text-muted-foreground uppercase tracking-wide">Reputation Score</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-2 border-primary/20 bg-gradient-to-br from-success/10 to-success/5 hover:shadow-glow transition-all">
-                <CardContent className="pt-8 pb-8">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="h-16 w-16 rounded-full bg-success/20 flex items-center justify-center mb-4">
-                      <CheckCircle className="h-8 w-8 text-success" />
-                    </div>
-                    <p className="text-4xl font-bold text-success mb-1">{profile.completed_deals}</p>
-                    <p className="text-sm text-muted-foreground uppercase tracking-wide">Completed Deals</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="border-2 border-primary/20 bg-gradient-to-br from-accent/10 to-accent/5 hover:shadow-glow transition-all">
-                <CardContent className="pt-8 pb-8">
-                  <div className="flex flex-col items-center text-center">
-                    <div className="h-16 w-16 rounded-full bg-accent/20 flex items-center justify-center mb-4">
-                      <TrendingUp className="h-8 w-8 text-accent" />
-                    </div>
-                    <p className="text-4xl font-bold text-accent mb-1">{completionRate}%</p>
-                    <p className="text-sm text-muted-foreground uppercase tracking-wide">Completion Rate</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center">
+                <Star className="h-10 w-10 text-primary mb-3" />
+                <p className="text-3xl font-bold mb-1">{profile.reputation_score}</p>
+                <p className="text-sm text-muted-foreground">Reputation</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center">
+                <CheckCircle className="h-10 w-10 text-success mb-3" />
+                <p className="text-3xl font-bold mb-1">{profile.completed_deals}</p>
+                <p className="text-sm text-muted-foreground">Completed</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col items-center text-center">
+                <TrendingUp className="h-10 w-10 text-accent mb-3" />
+                <p className="text-3xl font-bold mb-1">{completionRate}%</p>
+                <p className="text-sm text-muted-foreground">Success Rate</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
