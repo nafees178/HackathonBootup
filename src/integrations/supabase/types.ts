@@ -201,45 +201,66 @@ export type Database = {
           bio: string | null
           completed_deals: number | null
           created_at: string | null
+          education: string | null
           full_name: string | null
+          github: string | null
           id: string
+          linkedin: string | null
           location: string | null
           phone: string | null
+          portfolio_description: string | null
           reputation_score: number | null
           skills: string[] | null
           total_deals: number | null
+          twitter: string | null
           updated_at: string | null
           username: string
+          website: string | null
+          work_experience: string | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
           completed_deals?: number | null
           created_at?: string | null
+          education?: string | null
           full_name?: string | null
+          github?: string | null
           id: string
+          linkedin?: string | null
           location?: string | null
           phone?: string | null
+          portfolio_description?: string | null
           reputation_score?: number | null
           skills?: string[] | null
           total_deals?: number | null
+          twitter?: string | null
           updated_at?: string | null
           username: string
+          website?: string | null
+          work_experience?: string | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
           completed_deals?: number | null
           created_at?: string | null
+          education?: string | null
           full_name?: string | null
+          github?: string | null
           id?: string
+          linkedin?: string | null
           location?: string | null
           phone?: string | null
+          portfolio_description?: string | null
           reputation_score?: number | null
           skills?: string[] | null
           total_deals?: number | null
+          twitter?: string | null
           updated_at?: string | null
           username?: string
+          website?: string | null
+          work_experience?: string | null
         }
         Relationships: []
       }

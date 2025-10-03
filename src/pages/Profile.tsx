@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { User, Star, CheckCircle, TrendingUp, Edit, MapPin, Phone } from "lucide-react";
+import { User, Star, CheckCircle, TrendingUp, Edit, MapPin, Phone, Globe, Github, Linkedin, Twitter, Briefcase, GraduationCap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Profile {
@@ -33,6 +33,13 @@ const Profile = () => {
     bio: "",
     location: "",
     phone: "",
+    website: "",
+    github: "",
+    linkedin: "",
+    twitter: "",
+    portfolio_description: "",
+    work_experience: "",
+    education: "",
   });
   const navigate = useNavigate();
 
@@ -70,6 +77,13 @@ const Profile = () => {
         bio: profileData.bio || "",
         location: profileData.location || "",
         phone: profileData.phone || "",
+        website: profileData.website || "",
+        github: profileData.github || "",
+        linkedin: profileData.linkedin || "",
+        twitter: profileData.twitter || "",
+        portfolio_description: profileData.portfolio_description || "",
+        work_experience: profileData.work_experience || "",
+        education: profileData.education || "",
       });
       setBadges(badgesData.map((b) => b.badge_type));
     } catch (error) {
@@ -168,6 +182,65 @@ const Profile = () => {
                     placeholder="+1234567890"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Website</Label>
+                  <Input
+                    value={formData.website}
+                    onChange={(e) => setFormData({ ...formData, website: e.target.value })}
+                    placeholder="https://yourwebsite.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>GitHub</Label>
+                  <Input
+                    value={formData.github}
+                    onChange={(e) => setFormData({ ...formData, github: e.target.value })}
+                    placeholder="https://github.com/username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>LinkedIn</Label>
+                  <Input
+                    value={formData.linkedin}
+                    onChange={(e) => setFormData({ ...formData, linkedin: e.target.value })}
+                    placeholder="https://linkedin.com/in/username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Twitter</Label>
+                  <Input
+                    value={formData.twitter}
+                    onChange={(e) => setFormData({ ...formData, twitter: e.target.value })}
+                    placeholder="https://twitter.com/username"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Portfolio Description</Label>
+                  <Textarea
+                    value={formData.portfolio_description}
+                    onChange={(e) => setFormData({ ...formData, portfolio_description: e.target.value })}
+                    rows={3}
+                    placeholder="Describe your work and portfolio"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Work Experience</Label>
+                  <Textarea
+                    value={formData.work_experience}
+                    onChange={(e) => setFormData({ ...formData, work_experience: e.target.value })}
+                    rows={3}
+                    placeholder="Your professional experience"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Education</Label>
+                  <Textarea
+                    value={formData.education}
+                    onChange={(e) => setFormData({ ...formData, education: e.target.value })}
+                    rows={2}
+                    placeholder="Your educational background"
+                  />
+                </div>
                 <Button onClick={handleUpdate} className="w-full">
                   Save Changes
                 </Button>
@@ -202,6 +275,33 @@ const Profile = () => {
                     </div>
                   )}
                 </div>
+
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {(profile as any).website && (
+                    <a href={(profile as any).website} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline">
+                      <Globe className="h-4 w-4" />
+                      Website
+                    </a>
+                  )}
+                  {(profile as any).github && (
+                    <a href={(profile as any).github} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline">
+                      <Github className="h-4 w-4" />
+                      GitHub
+                    </a>
+                  )}
+                  {(profile as any).linkedin && (
+                    <a href={(profile as any).linkedin} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline">
+                      <Linkedin className="h-4 w-4" />
+                      LinkedIn
+                    </a>
+                  )}
+                  {(profile as any).twitter && (
+                    <a href={(profile as any).twitter} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-sm text-primary hover:underline">
+                      <Twitter className="h-4 w-4" />
+                      Twitter
+                    </a>
+                  )}
+                </div>
                 
                 {badges.length > 0 && <BadgeDisplay badges={badges as any} />}
               </div>
@@ -209,7 +309,7 @@ const Profile = () => {
           </CardHeader>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
@@ -240,6 +340,48 @@ const Profile = () => {
             </CardContent>
           </Card>
         </div>
+
+        {(profile as any).portfolio_description && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                Portfolio
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">{(profile as any).portfolio_description}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {(profile as any).work_experience && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                Work Experience
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground whitespace-pre-line">{(profile as any).work_experience}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {(profile as any).education && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GraduationCap className="h-5 w-5" />
+                Education
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground whitespace-pre-line">{(profile as any).education}</p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

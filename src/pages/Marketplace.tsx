@@ -1,143 +1,252 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { RequestCard } from "@/components/RequestCard";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { TrendingUp, Users, CheckCircle, Clock, Plus, MessageSquare, Star, Activity } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface Request {
-  id: string;
-  title: string;
-  description: string;
-  request_type: string;
-  offering: string;
-  seeking: string;
-  money_amount: number | null;
-  category: string;
-  has_prerequisite: boolean;
-  created_at: string;
-  profiles: {
-    username: string;
-    reputation_score: number;
-    location: string | null;
-  };
+interface DashboardStats {
+  totalRequests: number;
+  activeDeals: number;
+  completedDeals: number;
+  avgReputation: number;
+  myRequests: number;
+  myDeals: number;
 }
 
 const Marketplace = () => {
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    totalRequests: 0,
+    activeDeals: 0,
+    completedDeals: 0,
+    avgReputation: 0,
+    myRequests: 0,
+    myDeals: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchRequests();
+    fetchDashboardData();
   }, []);
 
-  const fetchRequests = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Fetch total open requests
+      const { count: requestCount } = await supabase
         .from("requests")
-        .select(`
-          *,
-          profiles (username, reputation_score, location)
-        `)
-        .eq("status", "open")
-        .order("created_at", { ascending: false });
+        .select("*", { count: "exact", head: true })
+        .eq("status", "open");
 
-      if (error) throw error;
-      setRequests(data || []);
+      // Fetch active deals
+      const { count: activeDealsCount } = await supabase
+        .from("deals")
+        .select("*", { count: "exact", head: true })
+        .in("status", ["pending", "prerequisite_pending", "active"]);
+
+      // Fetch completed deals
+      const { count: completedDealsCount } = await supabase
+        .from("deals")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "completed");
+
+      // Fetch average reputation
+      const { data: profilesData } = await supabase
+        .from("profiles")
+        .select("reputation_score");
+      
+      const avgRep = profilesData && profilesData.length > 0
+        ? Math.round(profilesData.reduce((acc, p) => acc + (p.reputation_score || 0), 0) / profilesData.length)
+        : 0;
+
+      let myRequests = 0;
+      let myDeals = 0;
+
+      if (session) {
+        // Fetch user's requests
+        const { count: userRequestsCount } = await supabase
+          .from("requests")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", session.user.id);
+
+        // Fetch user's deals
+        const { count: userDealsCount } = await supabase
+          .from("deals")
+          .select("*", { count: "exact", head: true })
+          .or(`requester_id.eq.${session.user.id},accepter_id.eq.${session.user.id}`);
+
+        myRequests = userRequestsCount || 0;
+        myDeals = userDealsCount || 0;
+
+        // Fetch recent activity
+        const { data: recentReqs } = await supabase
+          .from("requests")
+          .select(`
+            id,
+            title,
+            created_at,
+            profiles (username)
+          `)
+          .order("created_at", { ascending: false })
+          .limit(5);
+
+        setRecentActivity(recentReqs || []);
+      }
+
+      setStats({
+        totalRequests: requestCount || 0,
+        activeDeals: activeDealsCount || 0,
+        completedDeals: completedDealsCount || 0,
+        avgReputation: avgRep,
+        myRequests,
+        myDeals,
+      });
     } catch (error) {
-      console.error("Error fetching requests:", error);
+      console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredRequests = requests.filter((request) => {
-    const matchesSearch =
-      request.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || request.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
-
-  const categories = ["all", ...Array.from(new Set(requests.map((r) => r.category)))];
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="h-96 w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">All Requests</h1>
-          <p className="text-muted-foreground">Browse all available requests from the community</p>
-        </div>
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold mb-2">Dashboard</h1>
+        <p className="text-muted-foreground">Overview of marketplace activity and your statistics</p>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search requests..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full md:w-[200px]">
-            <Filter className="h-4 w-4 mr-2" />
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat === "all" ? "All Categories" : cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Open Requests</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.totalRequests}</div>
+            <p className="text-xs text-muted-foreground mt-1">Available in marketplace</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Active Deals</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.activeDeals}</div>
+            <p className="text-xs text-muted-foreground mt-1">Currently in progress</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Completed Deals</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.completedDeals}</div>
+            <p className="text-xs text-muted-foreground mt-1">Successfully finished</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Average Reputation</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.avgReputation}</div>
+            <p className="text-xs text-muted-foreground mt-1">Community average</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">My Requests</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.myRequests}</div>
+            <p className="text-xs text-muted-foreground mt-1">Your posted requests</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">My Deals</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{stats.myDeals}</div>
+            <p className="text-xs text-muted-foreground mt-1">Your total deals</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {!loading && (
-        <p className="text-sm text-muted-foreground mb-6">
-          {filteredRequests.length} request{filteredRequests.length !== 1 ? 's' : ''} found
-        </p>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Link to="/create-request" className="block">
+              <Button className="w-full justify-start gap-2" variant="outline">
+                <Plus className="h-4 w-4" />
+                Post New Request
+              </Button>
+            </Link>
+            <Link to="/" className="block">
+              <Button className="w-full justify-start gap-2" variant="outline">
+                <TrendingUp className="h-4 w-4" />
+                Browse Requests
+              </Button>
+            </Link>
+            <Link to="/messages" className="block">
+              <Button className="w-full justify-start gap-2" variant="outline">
+                <MessageSquare className="h-4 w-4" />
+                View Messages
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
 
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-96 w-full" />
-          ))}
-        </div>
-      ) : filteredRequests.length === 0 ? (
-        <div className="text-center py-12">
-          <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">No requests found</h3>
-          <p className="text-muted-foreground">Try adjusting your search or filters</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredRequests.map((request) => (
-            <RequestCard
-              key={request.id}
-              id={request.id}
-              title={request.title}
-              description={request.description}
-              requestType={request.request_type}
-              offering={request.offering}
-              seeking={request.seeking}
-              moneyAmount={request.money_amount}
-              category={request.category}
-              hasPrerequisite={request.has_prerequisite}
-              createdAt={request.created_at}
-              username={request.profiles.username}
-              reputationScore={request.profiles.reputation_score}
-              location={request.profiles.location}
-            />
-          ))}
-        </div>
-      )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {recentActivity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No recent activity</p>
+            ) : (
+              <div className="space-y-3">
+                {recentActivity.map((activity) => (
+                  <Link
+                    key={activity.id}
+                    to={`/request/${activity.id}`}
+                    className="block p-3 rounded-lg hover:bg-accent transition-colors"
+                  >
+                    <p className="font-medium text-sm truncate">{activity.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      by {activity.profiles?.username} • {new Date(activity.created_at).toLocaleDateString()}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

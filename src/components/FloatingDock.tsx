@@ -40,38 +40,41 @@ export function FloatingDock() {
   };
 
   return (
-    <TooltipProvider>
-      <div className="fixed left-4 top-1/2 -translate-y-1/2 z-50">
-        <div className="bg-card/90 backdrop-blur-xl border border-border rounded-2xl p-3 shadow-lg flex flex-col items-center gap-2">
-          {dockItems.map((item) => (
-            <Tooltip key={item.title}>
-              <TooltipTrigger asChild>
-                <NavLink
-                  to={item.url}
-                  className={({ isActive }) =>
-                    `flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 hover:scale-105 hover:bg-accent ${
-                      isActive ? "bg-accent text-foreground" : "text-muted-foreground"
-                    }`
-                  }
-                >
-                  <item.icon className="h-5 w-5" />
-                </NavLink>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="ml-2">
-                <p>{item.title}</p>
-              </TooltipContent>
-            </Tooltip>
-          ))}
+    <div className="fixed left-4 top-1/2 -translate-y-1/2 z-50">
+      <TooltipProvider>
+        <div className="bg-card/90 backdrop-blur-xl border border-border rounded-2xl p-3 shadow-lg flex flex-col gap-2">
+          {dockItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Tooltip key={item.title} delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <NavLink
+                    to={item.url}
+                    className={({ isActive }) =>
+                      `w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 hover:scale-105 hover:bg-accent ${
+                        isActive ? "bg-accent text-foreground" : "text-muted-foreground"
+                      }`
+                    }
+                  >
+                    <Icon className="w-5 h-5" />
+                  </NavLink>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="ml-2">
+                  <p>{item.title}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
           
-          <div className="h-px w-8 bg-border my-1" />
+          <div className="h-px w-8 bg-border my-1 self-center" />
           
-          <Tooltip>
+          <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <button
                 onClick={handleLogout}
-                className="flex items-center justify-center w-12 h-12 rounded-xl transition-all duration-200 hover:scale-105 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                className="w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 hover:scale-105 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="w-5 h-5" />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="ml-2">
@@ -79,7 +82,7 @@ export function FloatingDock() {
             </TooltipContent>
           </Tooltip>
         </div>
-      </div>
-    </TooltipProvider>
+      </TooltipProvider>
+    </div>
   );
 }

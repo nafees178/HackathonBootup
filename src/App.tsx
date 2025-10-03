@@ -9,6 +9,7 @@ import Auth from "./pages/Auth";
 import Marketplace from "./pages/Marketplace";
 import CreateRequest from "./pages/CreateRequest";
 import Profile from "./pages/Profile";
+import PublicProfile from "./pages/PublicProfile";
 import RequestDetail from "./pages/RequestDetail";
 import Messages from "./pages/Messages";
 import NotFound from "./pages/NotFound";
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/marketplace" element={<Layout><Marketplace /></Layout>} />
           <Route path="/create-request" element={<Layout><CreateRequest /></Layout>} />
           <Route path="/profile" element={<Layout><Profile /></Layout>} />
+          <Route path="/profile/:userId" element={<Layout><PublicProfile /></Layout>} />
           <Route path="/request/:id" element={<Layout><RequestDetail /></Layout>} />
           <Route path="/messages" element={<Layout><Messages /></Layout>} />
           <Route path="*" element={<Layout><NotFound /></Layout>} />
