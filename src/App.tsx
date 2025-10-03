@@ -13,6 +13,8 @@ import PublicProfile from "./pages/PublicProfile";
 import RequestDetail from "./pages/RequestDetail";
 import Conversations from "./pages/Conversations";
 import Messages from "./pages/Messages";
+import ActiveDeals from "./pages/ActiveDeals";
+import RateDeal from "./pages/RateDeal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ const App = () => (
           <Route path="/request/:id" element={<Layout><RequestDetail /></Layout>} />
           <Route path="/messages" element={<Layout><Conversations /></Layout>} />
           <Route path="/messages/legacy" element={<Layout><Messages /></Layout>} />
+          <Route path="/active-deals" element={<Layout><ActiveDeals /></Layout>} />
+          <Route path="/rate-deal/:dealId" element={<Layout><RateDeal /></Layout>} />
           <Route path="*" element={<Layout><NotFound /></Layout>} />
         </Routes>
       </BrowserRouter>

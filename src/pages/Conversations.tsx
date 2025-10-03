@@ -161,15 +161,26 @@ export default function Conversations() {
         ? conversation.participant2_id
         : conversation.participant1_id;
 
-      const { error } = await supabase.from("messages").insert([{
+      const messageContent = newMessage;
+      const { data, error } = await supabase.from("messages").insert([{
         conversation_id: selectedConversation,
         sender_id: currentUserId,
         receiver_id: receiverId,
-        message: newMessage,
+        message: messageContent,
         subject: "Conversation",
-      }]);
+      }]).select().single();
 
       if (error) throw error;
+
+      // Immediately add message to local state
+      if (data) {
+        setMessages((prev) => [...prev, {
+          id: data.id,
+          content: data.message,
+          sender_id: data.sender_id,
+          created_at: data.created_at,
+        }]);
+      }
 
       setNewMessage("");
     } catch (error: any) {

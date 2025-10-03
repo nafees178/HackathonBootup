@@ -52,26 +52,42 @@ const CreateRequest = () => {
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (formData.title.length < 10) {
-      newErrors.title = "Title must be at least 10 characters";
+    if (!formData.title.trim()) {
+      newErrors.title = "Title is required";
+    } else if (formData.title.length > 200) {
+      newErrors.title = "Title must be less than 200 characters";
     }
-    if (formData.description.length < 50) {
-      newErrors.description = "Description must be at least 50 characters";
+    
+    if (!formData.description.trim()) {
+      newErrors.description = "Description is required";
+    } else if (formData.description.length > 2000) {
+      newErrors.description = "Description must be less than 2000 characters";
     }
+    
     if (!formData.category) {
       newErrors.category = "Please select a category";
     }
-    if (formData.offering.length < 5) {
-      newErrors.offering = "Please provide more detail";
+    
+    if (!formData.offering.trim()) {
+      newErrors.offering = "Please specify what you're offering";
+    } else if (formData.offering.length > 500) {
+      newErrors.offering = "Must be less than 500 characters";
     }
-    if (formData.seeking.length < 5) {
-      newErrors.seeking = "Please provide more detail";
+    
+    if (!formData.seeking.trim()) {
+      newErrors.seeking = "Please specify what you're seeking";
+    } else if (formData.seeking.length > 500) {
+      newErrors.seeking = "Must be less than 500 characters";
     }
+    
     if (formData.requestType.includes("money") && (!formData.moneyAmount || parseFloat(formData.moneyAmount) <= 0)) {
       newErrors.moneyAmount = "Please enter a valid amount";
     }
-    if (formData.hasPrerequisite && formData.prerequisiteDescription.length < 20) {
-      newErrors.prerequisiteDescription = "Please provide detailed prerequisites";
+    
+    if (formData.hasPrerequisite && !formData.prerequisiteDescription.trim()) {
+      newErrors.prerequisiteDescription = "Please provide prerequisites details";
+    } else if (formData.hasPrerequisite && formData.prerequisiteDescription.length > 1000) {
+      newErrors.prerequisiteDescription = "Must be less than 1000 characters";
     }
 
     setErrors(newErrors);

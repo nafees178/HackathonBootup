@@ -5,7 +5,7 @@ import { RequestCard } from "@/components/RequestCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, TrendingUp, MessageSquare, User, Star, CheckCircle, Award, ArrowRight } from "lucide-react";
+import { Plus, TrendingUp, MessageSquare, User, Star, CheckCircle, Award, ArrowRight, ListChecks } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Request {
@@ -119,7 +119,7 @@ const Index = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
             <Link to="/create-request" className="block">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
                 <CardContent className="pt-6">
@@ -152,12 +152,28 @@ const Index = () => {
               </Card>
             </Link>
 
-            <Link to="/messages" className="block">
+            <Link to="/active-deals" className="block">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
                 <CardContent className="pt-6">
                   <div className="flex items-center gap-4">
                     <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
-                      <MessageSquare className="h-6 w-6 text-success" />
+                      <ListChecks className="h-6 w-6 text-success" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">Active Deals</h3>
+                      <p className="text-sm text-muted-foreground">Track your tasks</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link to="/messages" className="block">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-4">
+                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
+                      <MessageSquare className="h-6 w-6 text-accent" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg">Messages</h3>
