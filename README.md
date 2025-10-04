@@ -99,10 +99,20 @@ src/
 
 ## 🚀 Getting Started
 
+### Quick Start (Ready to Use)
+The application is pre-configured with a live database and ready to run:
+
+```bash
+git clone https://github.com/nafees178/HackathonBootup.git
+cd HackathonBootup
+npm install
+npm run dev
+```
+
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
-- Supabase account
+- (Optional) Supabase account for custom setup
 
 ### Installation
 
@@ -117,14 +127,17 @@ src/
    npm install
    ```
 
-3. **Set up Supabase**
-   - If you want to use ur own supabase follow these steps
-   - Create a new Supabase project
-   - Run the migration files in `supabase/migrations/`
-   - Copy your Supabase URL and anon key
+3. **Environment Configuration**
+   The project is currently configured with a live Supabase instance:
 
-4. **Configure variables**
-   - Change the supabase url and publishable key to ur in `src/integrations/supabase/client.ts`
+   **To use your own Supabase instance:**
+   - Create a new Supabase project at [supabase.com](https://supabase.com)
+   - Install Supabase CLI: `npm i supabase@">=1.8.1" --save-dev`
+   - Login to Supabase: `npx supabase login`
+   - Link your project: `npx supabase link --project-ref YOUR_PROJECT_ID`
+   - Run migrations: `npx supabase db push`
+   - Generate types: `npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/integrations/supabase/types.ts`
+   - Update the client configuration in `src/integrations/supabase/client.ts`
    
 
 5. **Start the development server**
@@ -142,9 +155,31 @@ The application includes comprehensive database migrations that set up:
 - Role-based permissions
 - Real-time subscriptions
 
-Run the migrations in order:
+**Current Database Status:**
+- ✅ **Live Database**: Connected to Supabase
+- ✅ **Migrations Applied**: All migrations from `supabase/migrations/` are applied
+- ✅ **RLS Enabled**: Row Level Security is configured
+- ✅ **Real-time**: Live subscriptions are active
+
+### Auto-Generated Files
+
+The following files are automatically generated and should not be manually edited:
+
+- **`src/integrations/supabase/client.ts`**: Supabase client configuration
+- **`src/integrations/supabase/types.ts`**: TypeScript types generated from database schema
+
+**To regenerate these files:**
 ```bash
-# Apply all migrations
+# Generate types from your database schema
+npx supabase gen types typescript --project-id YOUR_PROJECT_ID > src/integrations/supabase/types.ts
+
+# The client.ts file contains your project-specific configuration
+# Update the URL and keys in src/integrations/supabase/client.ts
+```
+
+**For Development:**
+```bash
+# If using your own Supabase instance, apply migrations:
 supabase db reset
 ```
 
