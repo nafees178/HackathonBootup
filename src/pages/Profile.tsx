@@ -170,10 +170,10 @@ const Profile = () => {
     : 0;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold">My Profile</h1>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">My Profile</h1>
           <Dialog open={editing} onOpenChange={setEditing}>
             <DialogTrigger asChild>
               <Button variant="outline" className="gap-2">
@@ -285,15 +285,15 @@ const Profile = () => {
           </Dialog>
         </div>
 
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-start gap-6">
-              <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <User className="h-12 w-12 text-primary" />
+        <Card className="mb-4 sm:mb-6">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start gap-4 sm:gap-6">
+              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <User className="h-10 w-10 sm:h-12 sm:w-12 text-primary" />
               </div>
 
-              <div className="flex-1">
-                <CardTitle className="text-3xl mb-2">{profile.username}</CardTitle>
+              <div className="flex-1 w-full">
+                <CardTitle className="text-2xl sm:text-3xl mb-2">{profile.username}</CardTitle>
                 {profile.full_name && <p className="text-lg text-muted-foreground mb-3">{profile.full_name}</p>}
                 {profile.bio && <p className="text-muted-foreground mb-4">{profile.bio}</p>}
                 
@@ -345,7 +345,7 @@ const Profile = () => {
           </CardHeader>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">

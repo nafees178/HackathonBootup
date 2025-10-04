@@ -73,11 +73,17 @@ const RequestDetail = () => {
   const [accepting, setAccepting] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [hasExistingDeal, setHasExistingDeal] = useState(false);
 
   useEffect(() => {
-    fetchRequest();
     checkAuth();
-  }, [id]);
+  }, []);
+
+  useEffect(() => {
+    if (currentUserId) {
+      fetchRequest();
+    }
+  }, [id, currentUserId]);
 
   const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -112,6 +118,18 @@ const RequestDetail = () => {
 
       if (badgesError) throw badgesError;
 
+      // Check if current user already has a deal for this request
+      if (currentUserId && currentUserId !== requestData.user_id) {
+        const { data: existingDeal } = await supabase
+          .from("deals")
+          .select("id")
+          .eq("request_id", id)
+          .eq("accepter_id", currentUserId)
+          .maybeSingle();
+
+        setHasExistingDeal(!!existingDeal);
+      }
+
       setRequest(requestData);
       setBadges(badgesData.map((b) => b.badge_type));
     } catch (error) {
@@ -132,6 +150,22 @@ const RequestDetail = () => {
 
     setAccepting(true);
     try {
+      // Check if user has already expressed interest
+      const { data: existingInterest, error: interestCheckError } = await supabase
+        .from("deals")
+        .select("id")
+        .eq("request_id", request.id)
+        .eq("accepter_id", currentUserId)
+        .maybeSingle();
+
+      if (interestCheckError) throw interestCheckError;
+
+      if (existingInterest) {
+        toast.error("You have already expressed interest in this request.");
+        setAccepting(false);
+        return;
+      }
+
       // First check if request is still open
       const { data: currentRequest, error: checkError } = await supabase
         .from("requests")
@@ -238,23 +272,23 @@ const RequestDetail = () => {
     : 0;
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
       <Button
         variant="ghost"
         onClick={() => navigate(-1)}
-        className="mb-6 gap-2"
+        className="mb-4 sm:mb-6 gap-2"
       >
         <ArrowLeft className="h-4 w-4" />
         Back
       </Button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+        <div className="lg:col-span-2 space-y-4 sm:space-y-6">
           <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-4 mb-4">
-                <div className="flex-1">
-                  <CardTitle className="text-3xl mb-2">{request.title}</CardTitle>
+            <CardHeader className="p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-4">
+                <div className="flex-1 w-full">
+                  <CardTitle className="text-xl sm:text-2xl md:text-3xl mb-2">{request.title}</CardTitle>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
                     <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
@@ -430,23 +464,30 @@ const RequestDetail = () => {
 
               {!isOwnRequest && request.status === "open" && (
                 <div className="space-y-3">
-                  <Button 
-                    onClick={handleAcceptRequest} 
-                    disabled={accepting}
-                    className="w-full gap-2"
-                  >
-                    {accepting ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="h-5 w-5" />
-                        Accept Request
-                      </>
-                    )}
-                  </Button>
+                  {hasExistingDeal ? (
+                    <div className="p-3 rounded-lg bg-muted/50 text-center">
+                      <p className="text-sm font-medium">Already Requested</p>
+                      <p className="text-xs text-muted-foreground mt-1">You've already expressed interest in this request</p>
+                    </div>
+                  ) : (
+                    <Button 
+                      onClick={handleAcceptRequest} 
+                      disabled={accepting}
+                      className="w-full gap-2"
+                    >
+                      {accepting ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-5 w-5" />
+                          Accept Request
+                        </>
+                      )}
+                    </Button>
+                  )}
                   <ContactDialog
                     receiverId={request.user_id}
                     receiverUsername={request.profiles.username}

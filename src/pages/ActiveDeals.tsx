@@ -260,8 +260,8 @@ export default function ActiveDeals() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">Active Deals</h1>
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8">Active Deals</h1>
 
       {deals.length === 0 ? (
         <Card>
@@ -270,7 +270,7 @@ export default function ActiveDeals() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 gap-4 sm:gap-6">
           {deals.map((deal) => {
             const isRequester = deal.requester_id === currentUserId;
             const otherParty = isRequester ? deal.accepter_profile : deal.requester_profile;
@@ -286,10 +286,10 @@ export default function ActiveDeals() {
 
             return (
               <Card key={deal.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-2xl mb-2">{deal.requests.title}</CardTitle>
+                <CardHeader className="p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                    <div className="flex-1 w-full">
+                      <CardTitle className="text-xl sm:text-2xl mb-2">{deal.requests.title}</CardTitle>
                       <Badge variant={deal.status === "active" ? "default" : "secondary"}>
                         {deal.status === "prerequisite_pending" ? "Prerequisites Pending" : "Active"}
                       </Badge>
@@ -311,8 +311,8 @@ export default function ActiveDeals() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
+                <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">
                         {isRequester ? "You're offering" : "They're offering"}
@@ -333,13 +333,18 @@ export default function ActiveDeals() {
                         <p className="font-semibold mb-2">Prerequisites Required:</p>
                         <p className="text-sm">{deal.requests.prerequisite_description}</p>
                       </div>
-                      {!deal.prerequisite_completed && (
+                      {!deal.prerequisite_completed && isRequester && (
                         <Button 
                           onClick={() => handlePrerequisiteComplete(deal.id)}
                           className="w-full"
                         >
                           Mark Prerequisites as Complete
                         </Button>
+                      )}
+                      {!deal.prerequisite_completed && !isRequester && (
+                        <p className="text-sm text-muted-foreground">
+                          Waiting for {deal.requester_profile.username} to mark prerequisites as complete.
+                        </p>
                       )}
                       {deal.prerequisite_completed && (
                         <p className="text-sm text-success flex items-center gap-2">

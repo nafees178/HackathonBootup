@@ -132,14 +132,23 @@ export default function RateDeal() {
       const bothRated = existingReviews && existingReviews.length === 2;
 
       if (bothRated) {
-        // Update both users' deal counts
+        // Update deal status to completed
+        await supabase
+          .from("deals")
+          .update({ 
+            status: "completed",
+            completed_at: new Date().toISOString()
+          })
+          .eq("id", dealId);
+
+        // Update both users' deal counts and recalculate reputation
         const profiles = [deal.requester_id, deal.accepter_id];
         for (const profileId of profiles) {
           const { data: profile } = await supabase
             .from("profiles")
             .select("total_deals, completed_deals")
             .eq("id", profileId)
-            .single();
+            .maybeSingle();
 
           if (profile) {
             const updates: any = {
@@ -155,16 +164,32 @@ export default function RateDeal() {
               .from("profiles")
               .update(updates)
               .eq("id", profileId);
+
+            // Recalculate reputation for this user
+            const { data: userReviews } = await supabase
+              .from("reviews")
+              .select("rating")
+              .eq("reviewee_id", profileId);
+
+            if (userReviews && userReviews.length > 0) {
+              const avgRating = userReviews.reduce((sum, r) => sum + r.rating, 0) / userReviews.length;
+              const reputation = Math.round(avgRating * 20);
+              
+              await supabase
+                .from("profiles")
+                .update({ reputation_score: reputation })
+                .eq("id", profileId);
+            }
           }
         }
-      }
 
-      // Update request status (only if not cancelled)
-      if (deal.status !== "cancelled") {
-        await supabase
-          .from("requests")
-          .update({ status: "completed" })
-          .eq("id", deal.request_id);
+        // Update request status (only if not cancelled)
+        if (deal.status !== "cancelled") {
+          await supabase
+            .from("requests")
+            .update({ status: "completed" })
+            .eq("id", deal.request_id);
+        }
       }
 
       toast.success("Rating submitted successfully!");

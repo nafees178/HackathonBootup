@@ -77,7 +77,7 @@ export default function Conversations() {
         ? conversation.participant2_id
         : conversation.participant1_id;
 
-      // Find completed deals between these users that haven't been rated
+      // Find active deals between these users where both have verified (ready to rate)
       const { data: deals, error } = await supabase
         .from("deals")
         .select(`
@@ -85,9 +85,13 @@ export default function Conversations() {
           status,
           requester_id,
           accepter_id,
+          requester_verified_accepter,
+          accepter_verified_requester,
           requests!inner(title)
         `)
-        .eq("status", "completed")
+        .eq("status", "active")
+        .eq("requester_verified_accepter", true)
+        .eq("accepter_verified_requester", true)
         .or(`and(requester_id.eq.${currentUserId},accepter_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},accepter_id.eq.${currentUserId})`);
 
       if (error) throw error;
@@ -268,16 +272,16 @@ export default function Conversations() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-4xl font-bold mb-8">Messages</h1>
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8">Messages</h1>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="lg:col-span-1">
           <CardHeader>
             <CardTitle>Conversations</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[600px]">
+          <CardContent className="p-2 sm:p-6">
+            <ScrollArea className="h-[400px] sm:h-[600px]">
               {conversations.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   No conversations yet
@@ -288,7 +292,7 @@ export default function Conversations() {
                     <button
                       key={conv.id}
                       onClick={() => setSelectedConversation(conv.id)}
-                      className={`w-full p-4 rounded-lg text-left transition-colors ${
+                      className={`w-full p-2 sm:p-4 rounded-lg text-left transition-colors ${
                         selectedConversation === conv.id
                           ? "bg-accent"
                           : "hover:bg-accent/50"
@@ -331,26 +335,27 @@ export default function Conversations() {
                 : "Select a conversation"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-2 sm:p-6">
             {selectedConversation ? (
               <div className="space-y-4">
                 {ratingPrompt && (
                   <Alert className="bg-primary/10 border-primary/20">
                     <Star className="h-4 w-4 text-primary" />
-                    <AlertDescription className="flex items-center justify-between">
-                      <span>
+                    <AlertDescription className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                      <span className="text-xs sm:text-sm">
                         Rate your experience with {ratingPrompt.otherUsername} for "{ratingPrompt.requestTitle}"
                       </span>
                       <Button
                         size="sm"
                         onClick={() => navigate(`/rate-deal/${ratingPrompt.dealId}`)}
+                        className="w-full sm:w-auto"
                       >
                         Rate Now
                       </Button>
                     </AlertDescription>
                   </Alert>
                 )}
-                <ScrollArea className="h-[500px] pr-4">
+                <ScrollArea className="h-[400px] sm:h-[500px] pr-2 sm:pr-4">
                   <div className="space-y-4">
                     {messages.map((msg) => (
                       <div
@@ -360,7 +365,7 @@ export default function Conversations() {
                         }`}
                       >
                         <div
-                          className={`max-w-[70%] rounded-lg p-3 ${
+                          className={`max-w-[85%] sm:max-w-[70%] rounded-lg p-2 sm:p-3 ${
                             msg.sender_id === currentUserId
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
