@@ -17,6 +17,7 @@ interface RequestCardProps {
   category: string;
   hasPrerequisite: boolean;
   createdAt: string;
+  deadline?: string;
   userId: string;
   username: string;
   reputationScore: number;
@@ -30,6 +31,8 @@ const requestTypeLabels: Record<string, string> = {
   item_for_skill: "Item ↔ Skill",
   item_for_item: "Item ↔ Item",
   item_for_money: "Item ↔ Money",
+  money_for_skill: "Money ↔ Skill",
+  money_for_item: "Money ↔ Item",
 };
 
 export const RequestCard = ({
@@ -43,6 +46,7 @@ export const RequestCard = ({
   category,
   hasPrerequisite,
   createdAt,
+  deadline,
   userId,
   username,
   reputationScore,
@@ -85,13 +89,20 @@ export const RequestCard = ({
         <div className="grid grid-cols-2 gap-2">
           <div className="p-2 rounded bg-muted/30">
             <p className="text-xs text-muted-foreground mb-1">Offering</p>
-            <p className="font-medium text-xs line-clamp-1">{offering}</p>
+            <p className="font-medium text-xs line-clamp-1">
+              {offering}
+              {moneyAmount && (requestType === 'money_for_skill' || requestType === 'money_for_item') && (
+                <span className="block text-primary font-bold">₹{moneyAmount}</span>
+              )}
+            </p>
           </div>
           <div className="p-2 rounded bg-muted/30">
             <p className="text-xs text-muted-foreground mb-1">Seeking</p>
             <p className="font-medium text-xs line-clamp-1">
               {seeking}
-              {moneyAmount && <span className="block text-primary">₹{moneyAmount}</span>}
+              {moneyAmount && (requestType === 'skill_for_money' || requestType === 'item_for_money') && (
+                <span className="block text-primary font-bold">₹{moneyAmount}</span>
+              )}
             </p>
           </div>
         </div>
@@ -108,9 +119,17 @@ export const RequestCard = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Clock className="h-3 w-3" />
-          <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Clock className="h-3 w-3" />
+            <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
+          </div>
+          {deadline && (
+            <div className="flex items-center gap-1 text-xs text-destructive">
+              <AlertCircle className="h-3 w-3" />
+              <span>Due: {formatDistanceToNow(new Date(deadline), { addSuffix: true })}</span>
+            </div>
+          )}
         </div>
       </CardContent>
 

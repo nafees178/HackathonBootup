@@ -62,6 +62,8 @@ const requestTypeLabels: Record<string, string> = {
   item_for_skill: "Item ↔ Skill",
   item_for_item: "Item ↔ Item",
   item_for_money: "Item ↔ Money",
+  money_for_skill: "Money ↔ Skill",
+  money_for_item: "Money ↔ Item",
 };
 
 const RequestDetail = () => {
@@ -152,10 +154,10 @@ const RequestDetail = () => {
     try {
       // Check if user has already expressed interest
       const { data: existingInterest, error: interestCheckError } = await supabase
-        .from("deals")
+        .from("request_interests")
         .select("id")
         .eq("request_id", request.id)
-        .eq("accepter_id", currentUserId)
+        .eq("user_id", currentUserId)
         .maybeSingle();
 
       if (interestCheckError) throw interestCheckError;
@@ -166,7 +168,7 @@ const RequestDetail = () => {
         return;
       }
 
-      // First check if request is still open
+      // Check if request is still open
       const { data: currentRequest, error: checkError } = await supabase
         .from("requests")
         .select("status")
@@ -176,38 +178,23 @@ const RequestDetail = () => {
       if (checkError) throw checkError;
       
       if (currentRequest.status !== "open") {
-        toast.error("This request has already been accepted by someone else.");
+        toast.error("This request is no longer available.");
         navigate("/marketplace");
         return;
       }
 
-      // Update request status to in_progress
-      const { error: updateError } = await supabase
-        .from("requests")
-        .update({ status: "in_progress" })
-        .eq("id", request.id)
-        .eq("status", "open"); // Only update if still open
+      // Create interest entry (request stays open for multiple interests)
+      const { error: interestError } = await supabase
+        .from("request_interests")
+        .insert([{
+          request_id: request.id,
+          user_id: currentUserId,
+          status: "pending",
+        }]);
 
-      if (updateError) throw updateError;
+      if (interestError) throw interestError;
 
-      // Create the deal
-      const { error: dealError } = await supabase.from("deals").insert([{
-        request_id: request.id,
-        requester_id: request.user_id,
-        accepter_id: currentUserId,
-        status: "pending",
-      }] as any);
-
-      if (dealError) {
-        // Rollback request status
-        await supabase
-          .from("requests")
-          .update({ status: "open" })
-          .eq("id", request.id);
-        throw dealError;
-      }
-
-      toast.success("Request sent! Waiting for poster approval.");
+      toast.success("Interest expressed! The poster will review your application.");
       navigate("/marketplace");
     } catch (error: any) {
       toast.error(error.message);
@@ -371,7 +358,12 @@ const RequestDetail = () => {
                     <Package className="h-5 w-5 text-primary" />
                     <h4 className="font-semibold">Offering</h4>
                   </div>
-                  <p className="text-lg">{request.offering}</p>
+                  <p className="text-lg">
+                    {request.offering}
+                    {request.money_amount && (request.request_type === 'money_for_skill' || request.request_type === 'money_for_item') && (
+                      <span className="block text-2xl font-bold text-primary mt-2">₹{request.money_amount}</span>
+                    )}
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-lg border">
@@ -381,8 +373,8 @@ const RequestDetail = () => {
                   </div>
                   <p className="text-lg">
                     {request.seeking}
-                    {request.money_amount && (
-                      <span className="block text-2xl font-bold text-accent mt-1">₹{request.money_amount}</span>
+                    {request.money_amount && (request.request_type === 'skill_for_money' || request.request_type === 'item_for_money') && (
+                      <span className="block text-2xl font-bold text-primary mt-2">₹{request.money_amount}</span>
                     )}
                   </p>
                 </div>

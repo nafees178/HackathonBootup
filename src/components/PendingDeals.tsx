@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 
 interface Deal {
   id: string;
+  user_id: string;
   accepter_id: string;
   status: string;
   created_at: string;
@@ -39,13 +40,14 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
   const fetchPendingDeals = async () => {
     try {
       const { data, error } = await supabase
-        .from("deals")
+        .from("request_interests")
         .select(`
           id,
-          accepter_id,
+          user_id,
           status,
+          message,
           created_at,
-          profiles:accepter_id (
+          profiles:user_id (
             id,
             username,
             full_name,
@@ -61,13 +63,13 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
       if (error) throw error;
       setDeals(data as any || []);
     } catch (error) {
-      console.error("Error fetching pending deals:", error);
+      console.error("Error fetching pending interests:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApprove = async (dealId: string, accepterId: string) => {
+  const handleApprove = async (interestId: string, accepterId: string) => {
     try {
       // Get request details
       const { data: request, error: reqError } = await supabase
@@ -78,27 +80,74 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
 
       if (reqError) throw reqError;
 
-      // Update deal status
-      const newStatus = request.has_prerequisite ? "prerequisite_pending" : "active";
+      // Start a transaction-like operation
+      // 1. Accept the selected interest
+      const { error: acceptError } = await supabase
+        .from("request_interests")
+        .update({ status: "accepted" })
+        .eq("id", interestId);
+
+      if (acceptError) throw acceptError;
+
+      // 2. Reject all other interests for this request
+      const { error: rejectError } = await supabase
+        .from("request_interests")
+        .update({ status: "rejected" })
+        .eq("request_id", requestId)
+        .neq("id", interestId);
+
+      if (rejectError) throw rejectError;
+
+      // 3. Create the deal
       const { error: dealError } = await supabase
         .from("deals")
-        .update({ status: newStatus })
-        .eq("id", dealId);
+        .insert([{
+          request_id: requestId,
+          requester_id: request.user_id,
+          accepter_id: accepterId,
+          status: request.has_prerequisite ? "prerequisite_pending" : "active",
+        }]);
 
       if (dealError) throw dealError;
 
-      // Create conversation
-      const { error: convError } = await supabase
+      // 3b. Increment total_deals for both users
+      const usersToUpdate = [request.user_id, accepterId];
+      for (const userId of usersToUpdate) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("total_deals")
+          .eq("id", userId)
+          .maybeSingle();
+
+        if (profile) {
+          await supabase
+            .from("profiles")
+            .update({ total_deals: (profile.total_deals || 0) + 1 })
+            .eq("id", userId);
+        }
+      }
+
+      // 4. Check if conversation already exists, if not create one
+      const { data: existingConv } = await supabase
         .from("conversations")
-        .insert({
-          participant1_id: request.user_id,
-          participant2_id: accepterId,
-          request_id: requestId,
-        });
+        .select("id")
+        .or(`and(participant1_id.eq.${request.user_id},participant2_id.eq.${accepterId}),and(participant1_id.eq.${accepterId},participant2_id.eq.${request.user_id})`)
+        .maybeSingle();
 
-      if (convError && convError.code !== "23505") throw convError; // Ignore duplicate
+      // Create conversation only if it doesn't exist
+      if (!existingConv) {
+        const { error: convError } = await supabase
+          .from("conversations")
+          .insert({
+            participant1_id: request.user_id,
+            participant2_id: accepterId,
+            request_id: requestId,
+          });
 
-      // Update request status
+        if (convError) throw convError;
+      }
+
+      // 5. Update request status
       const { error: statusError } = await supabase
         .from("requests")
         .update({ status: "in_progress" })
@@ -106,23 +155,23 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
 
       if (statusError) throw statusError;
 
-      toast.success("Deal approved! You can now message them.");
+      toast.success("Interest approved! Deal created and you can now message them.");
       fetchPendingDeals();
     } catch (error: any) {
       toast.error(error.message);
     }
   };
 
-  const handleReject = async (dealId: string) => {
+  const handleReject = async (interestId: string) => {
     try {
       const { error } = await supabase
-        .from("deals")
-        .update({ status: "cancelled" })
-        .eq("id", dealId);
+        .from("request_interests")
+        .update({ status: "rejected" })
+        .eq("id", interestId);
 
       if (error) throw error;
 
-      toast.success("Request rejected");
+      toast.success("Interest rejected");
       fetchPendingDeals();
     } catch (error: any) {
       toast.error(error.message);
@@ -180,7 +229,7 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                onClick={() => handleApprove(deal.id, deal.accepter_id)}
+                onClick={() => handleApprove(deal.id, deal.user_id)}
                 className="flex-1 gap-1"
               >
                 <Check className="h-4 w-4" />

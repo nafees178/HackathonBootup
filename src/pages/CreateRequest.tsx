@@ -206,6 +206,8 @@ const CreateRequest = () => {
     item_for_skill: "Item ↔ Skill",
     item_for_item: "Item ↔ Item",
     item_for_money: "Item ↔ Money",
+    money_for_skill: "Money ↔ Skill",
+    money_for_item: "Money ↔ Item",
   };
 
   return (
@@ -359,6 +361,8 @@ const CreateRequest = () => {
                           <SelectItem value="item_for_skill">Item ↔ Skill</SelectItem>
                           <SelectItem value="item_for_item">Item ↔ Item</SelectItem>
                           <SelectItem value="item_for_money">Item ↔ Money</SelectItem>
+                          <SelectItem value="money_for_skill">Money ↔ Skill</SelectItem>
+                          <SelectItem value="money_for_item">Money ↔ Item</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

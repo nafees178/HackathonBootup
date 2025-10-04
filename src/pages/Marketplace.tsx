@@ -17,6 +17,7 @@ interface Request {
   category: string;
   has_prerequisite: boolean;
   created_at: string;
+  deadline: string | null;
   profiles: {
     id: string;
     username: string;
@@ -132,6 +133,7 @@ const Marketplace = () => {
               category={request.category}
               hasPrerequisite={request.has_prerequisite}
               createdAt={request.created_at}
+              deadline={request.deadline}
               userId={request.profiles.id}
               username={request.profiles.username}
               reputationScore={request.profiles.reputation_score}

@@ -131,7 +131,7 @@ export default function RateDeal() {
 
       const bothRated = existingReviews && existingReviews.length === 2;
 
-      if (bothRated) {
+      if (bothRated && deal.status !== "cancelled") {
         // Update deal status to completed
         await supabase
           .from("deals")
@@ -141,31 +141,26 @@ export default function RateDeal() {
           })
           .eq("id", dealId);
 
-        // Update both users' deal counts and recalculate reputation
+        // Update both users' completed_deals count and recalculate reputation
         const profiles = [deal.requester_id, deal.accepter_id];
         for (const profileId of profiles) {
+          // Get current profile stats
           const { data: profile } = await supabase
             .from("profiles")
-            .select("total_deals, completed_deals")
+            .select("completed_deals")
             .eq("id", profileId)
             .maybeSingle();
 
           if (profile) {
-            const updates: any = {
-              total_deals: (profile.total_deals || 0) + 1,
-            };
-
-            // Only increment completed_deals if the deal wasn't cancelled
-            if (deal.status !== "cancelled") {
-              updates.completed_deals = (profile.completed_deals || 0) + 1;
-            }
-
+            // Increment completed_deals
             await supabase
               .from("profiles")
-              .update(updates)
+              .update({ 
+                completed_deals: (profile.completed_deals || 0) + 1 
+              })
               .eq("id", profileId);
 
-            // Recalculate reputation for this user
+            // Recalculate reputation for this user based on all reviews
             const { data: userReviews } = await supabase
               .from("reviews")
               .select("rating")
@@ -183,13 +178,11 @@ export default function RateDeal() {
           }
         }
 
-        // Update request status (only if not cancelled)
-        if (deal.status !== "cancelled") {
-          await supabase
-            .from("requests")
-            .update({ status: "completed" })
-            .eq("id", deal.request_id);
-        }
+        // Update request status to completed
+        await supabase
+          .from("requests")
+          .update({ status: "completed" })
+          .eq("id", deal.request_id);
       }
 
       toast.success("Rating submitted successfully!");

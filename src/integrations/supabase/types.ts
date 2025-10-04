@@ -591,6 +591,8 @@ export type Database = {
         | "item_for_skill"
         | "item_for_item"
         | "item_for_money"
+        | "money_for_skill"
+        | "money_for_item"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -748,6 +750,8 @@ export const Constants = {
         "item_for_skill",
         "item_for_item",
         "item_for_money",
+        "money_for_skill",
+        "money_for_item",
       ],
     },
   },
