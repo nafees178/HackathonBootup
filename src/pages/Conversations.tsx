@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User, Send, Loader2, Star } from "lucide-react";
+import { User, Send, Loader2, Star, ImagePlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -16,6 +16,7 @@ interface Message {
   content: string;
   sender_id: string;
   created_at: string;
+  image_url?: string | null;
 }
 
 interface Conversation {
@@ -47,6 +48,8 @@ export default function Conversations() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [ratingPrompt, setRatingPrompt] = useState<RatingPrompt | null>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -171,11 +174,31 @@ export default function Conversations() {
     }
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image must be smaller than 5MB");
+        return;
+      }
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeImage = () => {
+    setSelectedImage(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+      setImagePreview(null);
+    }
+  };
+
   const fetchMessages = async (conversationId: string) => {
     try {
       const { data, error } = await supabase
         .from("messages")
-        .select("id, message, sender_id, created_at")
+        .select("id, message, sender_id, created_at, image_url")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
 
@@ -185,6 +208,7 @@ export default function Conversations() {
         content: msg.message,
         sender_id: msg.sender_id,
         created_at: msg.created_at,
+        image_url: msg.image_url,
       })));
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -210,6 +234,7 @@ export default function Conversations() {
             content: payload.new.message,
             sender_id: payload.new.sender_id,
             created_at: payload.new.created_at,
+            image_url: payload.new.image_url,
           }]);
         }
       )
@@ -221,7 +246,7 @@ export default function Conversations() {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !currentUserId) return;
+    if ((!newMessage.trim() && !selectedImage) || !selectedConversation || !currentUserId) return;
 
     setSending(true);
     try {
@@ -232,13 +257,34 @@ export default function Conversations() {
         ? conversation.participant2_id
         : conversation.participant1_id;
 
-      const messageContent = newMessage;
+      let imageUrl = null;
+
+      // Upload image if selected
+      if (selectedImage) {
+        const fileExt = selectedImage.name.split('.').pop();
+        const fileName = `${currentUserId}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('message-images')
+          .upload(fileName, selectedImage);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('message-images')
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrl;
+      }
+
+      const messageContent = newMessage || " ";
       const { data, error } = await supabase.from("messages").insert([{
         conversation_id: selectedConversation,
         sender_id: currentUserId,
         receiver_id: receiverId,
         message: messageContent,
         subject: "Conversation",
+        image_url: imageUrl,
       }]).select().single();
 
       if (error) throw error;
@@ -250,10 +296,12 @@ export default function Conversations() {
           content: data.message,
           sender_id: data.sender_id,
           created_at: data.created_at,
+          image_url: data.image_url,
         }]);
       }
 
       setNewMessage("");
+      removeImage();
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -364,14 +412,21 @@ export default function Conversations() {
                           msg.sender_id === currentUserId ? "justify-end" : "justify-start"
                         }`}
                       >
-                        <div
+                         <div
                           className={`max-w-[85%] sm:max-w-[70%] rounded-lg p-2 sm:p-3 ${
                             msg.sender_id === currentUserId
                               ? "bg-primary text-primary-foreground"
                               : "bg-muted"
                           }`}
                         >
-                          <p className="text-sm">{msg.content}</p>
+                          {msg.content.trim() && <p className="text-sm">{msg.content}</p>}
+                          {msg.image_url && (
+                            <img 
+                              src={msg.image_url} 
+                              alt="Message attachment" 
+                              className="max-w-full h-auto max-h-64 rounded-lg mt-2"
+                            />
+                          )}
                           <p className="text-xs opacity-70 mt-1">
                             {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
                           </p>
@@ -381,16 +436,48 @@ export default function Conversations() {
                   </div>
                 </ScrollArea>
 
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Type a message..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
-                  />
-                  <Button onClick={handleSendMessage} disabled={sending}>
-                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                  </Button>
+                <div className="space-y-2">
+                  {imagePreview && (
+                    <div className="relative inline-block">
+                      <img src={imagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg border" />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6"
+                        onClick={removeImage}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Input
+                      id="chat-image"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageSelect}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => document.getElementById('chat-image')?.click()}
+                    >
+                      <ImagePlus className="h-4 w-4" />
+                    </Button>
+                    <Input
+                      placeholder="Type a message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === "Enter" && !sending && handleSendMessage()}
+                      className="flex-1"
+                    />
+                    <Button onClick={handleSendMessage} disabled={sending}>
+                      {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : (

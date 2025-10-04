@@ -15,6 +15,7 @@ interface Message {
   id: string;
   subject: string;
   message: string;
+  image_url: string | null;
   is_read: boolean;
   created_at: string;
   sender: {
@@ -150,6 +151,15 @@ const Messages = () => {
                   <CardContent>
                     <p className="font-semibold mb-2">{message.subject}</p>
                     <p className="text-muted-foreground">{message.message}</p>
+                    {message.image_url && (
+                      <div className="mt-3">
+                        <img 
+                          src={message.image_url} 
+                          alt="Message attachment" 
+                          className="max-w-full h-auto max-h-64 rounded-lg border border-border"
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );

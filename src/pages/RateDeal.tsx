@@ -92,19 +92,6 @@ export default function RateDeal() {
 
       if (reviewError) throw reviewError;
 
-      // Update deal status to completed (only if not already cancelled)
-      if (deal.status !== "cancelled") {
-        const { error: dealError } = await supabase
-          .from("deals")
-          .update({ 
-            status: "completed",
-            completed_at: new Date().toISOString()
-          })
-          .eq("id", dealId);
-
-        if (dealError) throw dealError;
-      }
-
       // Calculate and update reviewee's reputation based on all their reviews
       const { data: allReviews } = await supabase
         .from("reviews")

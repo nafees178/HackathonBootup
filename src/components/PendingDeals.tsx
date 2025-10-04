@@ -80,6 +80,19 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
 
       if (reqError) throw reqError;
 
+      // Check if a deal already exists for this request and accepter
+      const { data: existingDeal } = await supabase
+        .from("deals")
+        .select("id")
+        .eq("request_id", requestId)
+        .eq("accepter_id", accepterId)
+        .maybeSingle();
+
+      if (existingDeal) {
+        toast.info("This interest has already been accepted");
+        return;
+      }
+
       // Start a transaction-like operation
       // 1. Accept the selected interest
       const { error: acceptError } = await supabase
