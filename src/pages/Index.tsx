@@ -42,6 +42,39 @@ const Index = () => {
 
   useEffect(() => {
     fetchData();
+
+    // Set up real-time subscription for new requests
+    const channel = supabase
+      .channel('requests-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'requests'
+        },
+        async (payload) => {
+          console.log('New request received:', payload);
+          // Fetch the complete request with profile data
+          const { data: newRequest, error } = await supabase
+            .from("requests")
+            .select(`
+              *,
+              profiles (id, username, reputation_score, location)
+            `)
+            .eq("id", payload.new.id)
+            .single();
+
+          if (!error && newRequest) {
+            setRecentRequests(prev => [newRequest, ...prev.slice(0, 7)]);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchData = async () => {
@@ -95,23 +128,23 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-4 md:px-6 py-4 md:py-8">
         {/* Hero Section */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-5xl font-bold mb-3">
+        <div className="mb-8 md:mb-12">
+          <div className="flex items-center justify-between mb-4 md:mb-6 gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 text-foreground truncate">
                 Welcome {userProfile ? `back, ${userProfile.username}` : "to Tit4Tat"}!
               </h1>
-              <p className="text-xl text-muted-foreground">
+              <p className="text-sm md:text-lg lg:text-xl text-muted-foreground">
                 Your marketplace for skill and item exchanges
               </p>
             </div>
             {userProfile && (
-              <Link to="/profile">
-                <Avatar className="h-20 w-20 border-4 border-primary/20 cursor-pointer hover:border-primary/40 transition-colors">
-                  <AvatarFallback className="text-2xl">
-                    <User className="h-10 w-10" />
+              <Link to="/profile" className="flex-shrink-0">
+                <Avatar className="h-12 w-12 md:h-16 md:w-16 border-2 border-border cursor-pointer hover:border-primary transition-all duration-200">
+                  <AvatarFallback className="text-base md:text-xl bg-muted">
+                    <User className="h-6 w-6 md:h-8 md:w-8" />
                   </AvatarFallback>
                 </Avatar>
               </Link>
@@ -119,17 +152,17 @@ const Index = () => {
           </div>
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
             <Link to="/create-request" className="block">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Plus className="h-6 w-6 text-primary" />
+              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
+                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0">
+                      <Plus className="h-5 w-5 md:h-6 md:w-6 text-background" strokeWidth={2.5} />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Post Request</h3>
-                      <p className="text-sm text-muted-foreground">Share what you need</p>
+                    <div className="min-w-0 text-center md:text-left">
+                      <h3 className="font-semibold text-sm md:text-base">Post</h3>
+                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Share what you need</p>
                     </div>
                   </div>
                 </CardContent>
@@ -137,15 +170,15 @@ const Index = () => {
             </Link>
 
             <Link to="/your-requests" className="block">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-secondary/10 flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-secondary" />
+              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
+                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <FileText className="h-5 w-5 md:h-6 md:w-6 text-foreground" strokeWidth={2.5} />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Your Requests</h3>
-                      <p className="text-sm text-muted-foreground">View your posts</p>
+                    <div className="min-w-0 text-center md:text-left">
+                      <h3 className="font-semibold text-sm md:text-base">Requests</h3>
+                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">View your posts</p>
                     </div>
                   </div>
                 </CardContent>
@@ -153,15 +186,15 @@ const Index = () => {
             </Link>
 
             <Link to="/marketplace" className="block">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-accent" />
+              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
+                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-foreground" strokeWidth={2.5} />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Browse Marketplace</h3>
-                      <p className="text-sm text-muted-foreground">Find opportunities</p>
+                    <div className="min-w-0 text-center md:text-left">
+                      <h3 className="font-semibold text-sm md:text-base">Market</h3>
+                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Find opportunities</p>
                     </div>
                   </div>
                 </CardContent>
@@ -169,15 +202,15 @@ const Index = () => {
             </Link>
 
             <Link to="/active-deals" className="block">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
-                      <ListChecks className="h-6 w-6 text-success" />
+              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
+                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-success/20 flex items-center justify-center flex-shrink-0">
+                      <ListChecks className="h-5 w-5 md:h-6 md:w-6 text-success" strokeWidth={2.5} />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Active Deals</h3>
-                      <p className="text-sm text-muted-foreground">Track your tasks</p>
+                    <div className="min-w-0 text-center md:text-left">
+                      <h3 className="font-semibold text-sm md:text-base">Deals</h3>
+                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Track your tasks</p>
                     </div>
                   </div>
                 </CardContent>
@@ -185,15 +218,15 @@ const Index = () => {
             </Link>
 
             <Link to="/messages" className="block">
-              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary/50">
-                <CardContent className="pt-6">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-accent/10 flex items-center justify-center">
-                      <MessageSquare className="h-6 w-6 text-accent" />
+              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
+                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
+                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                      <MessageSquare className="h-5 w-5 md:h-6 md:w-6 text-foreground" strokeWidth={2.5} />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">Messages</h3>
-                      <p className="text-sm text-muted-foreground">Check conversations</p>
+                    <div className="min-w-0 text-center md:text-left">
+                      <h3 className="font-semibold text-sm md:text-base">Messages</h3>
+                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Check conversations</p>
                     </div>
                   </div>
                 </CardContent>
@@ -203,37 +236,37 @@ const Index = () => {
 
           {/* User Stats */}
           {userProfile && (
-            <Card className="mb-8 bg-gradient-to-br from-primary/5 to-accent/5">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Award className="h-5 w-5 text-primary" />
+            <Card className="mb-6 md:mb-8 border-2">
+              <CardHeader className="pb-3 md:pb-6">
+                <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
+                  <Award className="h-4 w-4 md:h-5 md:w-5" />
                   Your Performance
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-3 gap-3 md:gap-6">
                   <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <Star className="h-6 w-6 text-yellow-500" />
-                      <span className="text-4xl font-bold">{userProfile.reputation_score}</span>
+                    <div className="flex flex-col items-center gap-1 md:gap-2 mb-1 md:mb-2">
+                      <Star className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />
+                      <span className="text-2xl md:text-4xl font-bold">{userProfile.reputation_score}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Reputation Score</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">Reputation</p>
                   </div>
 
                   <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <CheckCircle className="h-6 w-6 text-success" />
-                      <span className="text-4xl font-bold">{userProfile.completed_deals}</span>
+                    <div className="flex flex-col items-center gap-1 md:gap-2 mb-1 md:mb-2">
+                      <CheckCircle className="h-5 w-5 md:h-6 md:w-6 text-success" />
+                      <span className="text-2xl md:text-4xl font-bold">{userProfile.completed_deals}</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Completed Deals</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">Completed</p>
                   </div>
 
                   <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 mb-2">
-                      <TrendingUp className="h-6 w-6 text-accent" />
-                      <span className="text-4xl font-bold">{completionRate}%</span>
+                    <div className="flex flex-col items-center gap-1 md:gap-2 mb-1 md:mb-2">
+                      <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-foreground" />
+                      <span className="text-2xl md:text-4xl font-bold">{completionRate}%</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">Success Rate</p>
+                    <p className="text-[10px] md:text-sm text-muted-foreground">Success Rate</p>
                   </div>
                 </div>
               </CardContent>
@@ -242,15 +275,15 @@ const Index = () => {
         </div>
 
         {/* Recent Requests */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-6">
+        <div className="mb-8 md:mb-12">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
             <div>
-              <h2 className="text-3xl font-bold mb-2">Recent Requests</h2>
-              <p className="text-muted-foreground">Fresh opportunities from the community</p>
+              <h2 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2">Recent Requests</h2>
+              <p className="text-xs md:text-sm text-muted-foreground">Fresh opportunities • Live Updates ✨</p>
             </div>
             <Link to="/marketplace">
-              <Button variant="outline" className="gap-2">
-                View All <ArrowRight className="h-4 w-4" />
+              <Button variant="outline" className="gap-2 text-sm md:text-base">
+                View All <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
               </Button>
             </Link>
           </div>
@@ -270,7 +303,7 @@ const Index = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {recentRequests.map((request) => (
                 <RequestCard
                   key={request.id}
@@ -295,39 +328,39 @@ const Index = () => {
         </div>
 
         {/* Info Section */}
-        <Card className="bg-gradient-to-br from-primary/10 to-accent/10 border-primary/20">
-          <CardContent className="py-12">
+        <Card className="border-2">
+          <CardContent className="py-8 md:py-12 px-4 md:px-6">
             <div className="text-center max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold mb-4">How Tit4Tat Works</h2>
-              <p className="text-lg text-muted-foreground mb-8">
+              <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">How Tit4Tat Works</h2>
+              <p className="text-sm md:text-lg text-muted-foreground mb-6 md:mb-8">
                 Exchange skills, items, or services with people in your community. Post what you need, 
                 browse what others offer, and create mutually beneficial deals.
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-left">
                 <div>
-                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3 mx-auto md:mx-0">
-                    <span className="text-2xl font-bold text-primary">1</span>
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center mb-2 md:mb-3 mx-auto md:mx-0">
+                    <span className="text-xl md:text-2xl font-bold">1</span>
                   </div>
-                  <h3 className="font-semibold mb-2 text-center md:text-left">Post Your Request</h3>
-                  <p className="text-sm text-muted-foreground text-center md:text-left">
+                  <h3 className="font-semibold mb-1 md:mb-2 text-center md:text-left text-sm md:text-base">Post Your Request</h3>
+                  <p className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
                     Share what you're offering and what you're looking for
                   </p>
                 </div>
                 <div>
-                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3 mx-auto md:mx-0">
-                    <span className="text-2xl font-bold text-primary">2</span>
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center mb-2 md:mb-3 mx-auto md:mx-0">
+                    <span className="text-xl md:text-2xl font-bold">2</span>
                   </div>
-                  <h3 className="font-semibold mb-2 text-center md:text-left">Connect & Agree</h3>
-                  <p className="text-sm text-muted-foreground text-center md:text-left">
+                  <h3 className="font-semibold mb-1 md:mb-2 text-center md:text-left text-sm md:text-base">Connect & Agree</h3>
+                  <p className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
                     Review interested users and start a conversation
                   </p>
                 </div>
                 <div>
-                  <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center mb-3 mx-auto md:mx-0">
-                    <span className="text-2xl font-bold text-primary">3</span>
+                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center mb-2 md:mb-3 mx-auto md:mx-0">
+                    <span className="text-xl md:text-2xl font-bold">3</span>
                   </div>
-                  <h3 className="font-semibold mb-2 text-center md:text-left">Complete & Rate</h3>
-                  <p className="text-sm text-muted-foreground text-center md:text-left">
+                  <h3 className="font-semibold mb-1 md:mb-2 text-center md:text-left text-sm md:text-base">Complete & Rate</h3>
+                  <p className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
                     Exchange and build your reputation with successful deals
                   </p>
                 </div>

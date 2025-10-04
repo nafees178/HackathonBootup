@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { User, Star, CheckCircle, TrendingUp, Edit, MapPin, Phone, Globe, Github, Linkedin, Twitter, Briefcase, GraduationCap } from "lucide-react";
+import { User, Star, CheckCircle, TrendingUp, Edit, MapPin, Phone, Globe, Github, Linkedin, Twitter, Briefcase, GraduationCap, QrCode, Upload, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 
@@ -45,6 +45,10 @@ const Profile = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [uploadingQr, setUploadingQr] = useState(false);
+  const [selectedQr, setSelectedQr] = useState<File | null>(null);
+  const [qrPreview, setQrPreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     full_name: "",
     bio: "",
@@ -129,6 +133,71 @@ const Profile = () => {
     }
   };
 
+  const handleQrSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image must be smaller than 5MB");
+        return;
+      }
+      setSelectedQr(file);
+      setQrPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const removeQr = () => {
+    setSelectedQr(null);
+    if (qrPreview) {
+      URL.revokeObjectURL(qrPreview);
+      setQrPreview(null);
+    }
+  };
+
+  const handleQrUpload = async () => {
+    if (!selectedQr) return;
+
+    setUploadingQr(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      // Delete old QR if exists
+      if ((profile as any)?.payment_qr_url) {
+        const oldPath = (profile as any).payment_qr_url.split('/').slice(-2).join('/');
+        await supabase.storage.from('payment-qr').remove([oldPath]);
+      }
+
+      const fileExt = selectedQr.name.split('.').pop();
+      const timestamp = Date.now();
+      const fileName = `${session.user.id}/qr_${timestamp}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('payment-qr')
+        .upload(fileName, selectedQr);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('payment-qr')
+        .getPublicUrl(fileName);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ payment_qr_url: publicUrl })
+        .eq("id", session.user.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Payment QR code uploaded successfully!");
+      removeQr();
+      fetchProfile();
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setUploadingQr(false);
+    }
+  };
+
   const handleUpdate = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -172,13 +241,14 @@ const Profile = () => {
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">My Profile</h1>
+        <div className="flex items-center justify-between gap-2 sm:gap-4 mb-4 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl md:text-4xl font-bold">My Profile</h1>
           <Dialog open={editing} onOpenChange={setEditing}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Edit className="h-4 w-4" />
-                Edit Profile
+              <Button variant="outline" className="gap-1 sm:gap-2 text-sm sm:text-base">
+                <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Edit Profile</span>
+                <span className="sm:hidden">Edit</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
@@ -277,6 +347,91 @@ const Profile = () => {
                     placeholder="Your educational background"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label>Payment QR Code</Label>
+                  <div className="space-y-3">
+                    {(profile as any)?.payment_qr_url && !qrPreview && (
+                      <div className="relative inline-block">
+                        <img 
+                          src={(profile as any).payment_qr_url} 
+                          alt="Current QR" 
+                          className="h-32 w-32 object-cover rounded-lg border" 
+                        />
+                      </div>
+                    )}
+                    {qrPreview && (
+                      <div className="relative inline-block">
+                        <img src={qrPreview} alt="New QR Preview" className="h-32 w-32 object-cover rounded-lg border" />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6"
+                          onClick={removeQr}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                    <div className="flex gap-2 flex-wrap">
+                      <Input
+                        id="qr-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleQrSelect}
+                        className="hidden"
+                      />
+                      {(profile as any)?.payment_qr_url && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={async () => {
+                            try {
+                              const { data: { session } } = await supabase.auth.getSession();
+                              if (!session) return;
+                              
+                              const oldPath = (profile as any).payment_qr_url.split('/').slice(-2).join('/');
+                              await supabase.storage.from('payment-qr').remove([oldPath]);
+                              
+                              await supabase
+                                .from("profiles")
+                                .update({ payment_qr_url: null })
+                                .eq("id", session.user.id);
+                              
+                              toast.success("QR code removed");
+                              fetchProfile();
+                            } catch (error: any) {
+                              toast.error(error.message);
+                            }
+                          }}
+                          className="gap-2"
+                        >
+                          <X className="h-4 w-4" />
+                          Remove QR Code
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById('qr-upload')?.click()}
+                        className="gap-2"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {(profile as any)?.payment_qr_url ? "Update QR Code" : "Upload QR Code"}
+                      </Button>
+                      {selectedQr && (
+                        <Button
+                          type="button"
+                          onClick={handleQrUpload}
+                          disabled={uploadingQr}
+                        >
+                          {uploadingQr ? "Uploading..." : "Save QR Code"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <Button onClick={handleUpdate} className="w-full">
                   Save Changes
                 </Button>
@@ -284,6 +439,22 @@ const Profile = () => {
             </DialogContent>
           </Dialog>
         </div>
+
+        <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Payment QR Code</DialogTitle>
+              <DialogDescription>Scan this QR code to make a payment</DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center p-4">
+              <img 
+                src={(profile as any)?.payment_qr_url} 
+                alt="Payment QR Code" 
+                className="max-w-full h-auto rounded-lg"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card className="mb-4 sm:mb-6">
           <CardHeader className="p-4 sm:p-6">
@@ -293,7 +464,19 @@ const Profile = () => {
               </div>
 
               <div className="flex-1 w-full">
-                <CardTitle className="text-2xl sm:text-3xl mb-2">{profile.username}</CardTitle>
+                <div className="flex items-center justify-between mb-2">
+                  <CardTitle className="text-2xl sm:text-3xl">{profile.username}</CardTitle>
+                  {(profile as any)?.payment_qr_url && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setQrModalOpen(true)}
+                      className="ml-2"
+                    >
+                      <QrCode className="h-5 w-5" />
+                    </Button>
+                  )}
+                </div>
                 {profile.full_name && <p className="text-lg text-muted-foreground mb-3">{profile.full_name}</p>}
                 {profile.bio && <p className="text-muted-foreground mb-4">{profile.bio}</p>}
                 

@@ -101,22 +101,36 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Package className="h-8 w-8" />
-            <span className="text-3xl font-bold">Tit4Tat</span>
+    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-float" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '1s' }} />
+      </div>
+
+      <Card className="w-full max-w-md relative z-10 glass-effect shadow-2xl border-2">
+        <CardHeader className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-primary to-accent animate-pulse-slow">
+              <Package className="h-8 w-8 text-white" />
+            </div>
           </div>
-          <CardTitle className="text-3xl">Welcome</CardTitle>
-          <CardDescription>Sign in or create an account to start trading</CardDescription>
+          <div>
+            <h1 className="text-4xl font-bold text-gradient mb-2">Tit4Tat</h1>
+            <CardTitle className="text-2xl font-semibold">Welcome Back</CardTitle>
+            <CardDescription className="text-base">Join the marketplace where everyone wins</CardDescription>
+          </div>
         </CardHeader>
         
-        <CardContent>
+        <CardContent className="pt-6">
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/50">
+              <TabsTrigger value="signin" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white">
+                Sign In
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent data-[state=active]:text-white">
+                Sign Up
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="signin" className="mt-6">
@@ -142,7 +156,7 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full btn-gradient h-11 font-semibold" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Sign In
                 </Button>
@@ -194,7 +208,7 @@ const Auth = () => {
                     minLength={6}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full btn-gradient h-11 font-semibold" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Create Account
                 </Button>

@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Star, CheckCircle, TrendingUp, MapPin, Phone, Globe, Github, Linkedin, Twitter, Briefcase, GraduationCap, MessageSquare } from "lucide-react";
+import { User, Star, CheckCircle, TrendingUp, MapPin, Phone, Globe, Github, Linkedin, Twitter, Briefcase, GraduationCap, MessageSquare, QrCode } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 
@@ -50,6 +51,7 @@ const PublicProfile = () => {
   const [badges, setBadges] = useState<string[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -141,7 +143,19 @@ const PublicProfile = () => {
               </div>
 
               <div className="flex-1">
-                <CardTitle className="text-3xl mb-2">{profile.username}</CardTitle>
+                <div className="flex items-center justify-between mb-2">
+                  <CardTitle className="text-3xl">{profile.username}</CardTitle>
+                  {(profile as any)?.payment_qr_url && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setQrModalOpen(true)}
+                      className="ml-2"
+                    >
+                      <QrCode className="h-5 w-5" />
+                    </Button>
+                  )}
+                </div>
                 {profile.full_name && <p className="text-lg text-muted-foreground mb-3">{profile.full_name}</p>}
                 {profile.bio && <p className="text-muted-foreground mb-4">{profile.bio}</p>}
                 
@@ -324,6 +338,22 @@ const PublicProfile = () => {
             </CardContent>
           </Card>
         )}
+
+        <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Payment QR Code</DialogTitle>
+              <DialogDescription>Scan this QR code to make a payment to {profile.username}</DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-center p-4">
+              <img 
+                src={(profile as any)?.payment_qr_url} 
+                alt="Payment QR Code" 
+                className="max-w-full h-auto rounded-lg"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

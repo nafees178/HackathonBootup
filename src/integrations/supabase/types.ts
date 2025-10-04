@@ -273,6 +273,7 @@ export type Database = {
           id: string
           linkedin: string | null
           location: string | null
+          payment_qr_url: string | null
           phone: string | null
           portfolio_description: string | null
           reputation_score: number | null
@@ -295,6 +296,7 @@ export type Database = {
           id: string
           linkedin?: string | null
           location?: string | null
+          payment_qr_url?: string | null
           phone?: string | null
           portfolio_description?: string | null
           reputation_score?: number | null
@@ -317,6 +319,7 @@ export type Database = {
           id?: string
           linkedin?: string | null
           location?: string | null
+          payment_qr_url?: string | null
           phone?: string | null
           portfolio_description?: string | null
           reputation_score?: number | null

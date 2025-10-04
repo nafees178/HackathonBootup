@@ -41,7 +41,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen w-full bg-background">
-      <main className="w-full pl-24">
+      <main className="w-full md:pl-24 pb-20 md:pb-0">
         {children}
       </main>
       <FloatingDock />

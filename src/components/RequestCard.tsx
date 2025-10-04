@@ -53,10 +53,10 @@ export const RequestCard = ({
   location,
 }: RequestCardProps) => {
   return (
-    <Card className="hover:border-primary/50 transition-all duration-200">
+    <Card className="card-hover border group">
       <CardHeader>
         <div className="flex items-start justify-between gap-4 mb-3">
-          <CardTitle className="text-lg line-clamp-2">{title}</CardTitle>
+          <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors duration-200">{title}</CardTitle>
           <Badge variant="outline">{category}</Badge>
         </div>
 
@@ -87,7 +87,7 @@ export const RequestCard = ({
         <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
 
         <div className="grid grid-cols-2 gap-2">
-          <div className="p-2 rounded bg-muted/30">
+          <div className="p-2 rounded bg-muted/50">
             <p className="text-xs text-muted-foreground mb-1">Offering</p>
             <p className="font-medium text-xs line-clamp-1">
               {offering}
@@ -96,7 +96,7 @@ export const RequestCard = ({
               )}
             </p>
           </div>
-          <div className="p-2 rounded bg-muted/30">
+          <div className="p-2 rounded bg-muted/50">
             <p className="text-xs text-muted-foreground mb-1">Seeking</p>
             <p className="font-medium text-xs line-clamp-1">
               {seeking}
@@ -137,7 +137,7 @@ export const RequestCard = ({
         <Link to={`/request/${id}`} className="w-full">
           <Button className="w-full gap-2" size="sm">
             View Details
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
           </Button>
         </Link>
       </CardFooter>

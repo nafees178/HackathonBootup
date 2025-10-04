@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User, Send, Loader2, Star, ImagePlus, X } from "lucide-react";
+import { User, Send, Loader2, Star, ImagePlus, X, QrCode } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 
 interface Message {
@@ -27,6 +28,7 @@ interface Conversation {
   profiles: {
     id: string;
     username: string;
+    payment_qr_url?: string | null;
   };
   messages: Message[];
 }
@@ -50,6 +52,8 @@ export default function Conversations() {
   const [ratingPrompt, setRatingPrompt] = useState<RatingPrompt | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [selectedQrUrl, setSelectedQrUrl] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -154,7 +158,7 @@ export default function Conversations() {
           
           const { data: profile } = await supabase
             .from("profiles")
-            .select("id, username")
+            .select("id, username, payment_qr_url")
             .eq("id", otherUserId)
             .single();
 
@@ -377,11 +381,30 @@ export default function Conversations() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>
-              {selectedConversation
-                ? conversations.find(c => c.id === selectedConversation)?.profiles.username || "Conversation"
-                : "Select a conversation"}
-            </CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex-1 truncate">
+                {selectedConversation
+                  ? conversations.find(c => c.id === selectedConversation)?.profiles.username || "Conversation"
+                  : "Select a conversation"}
+              </CardTitle>
+              {selectedConversation && conversations.find(c => c.id === selectedConversation)?.profiles.payment_qr_url && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="ml-auto shrink-0 hover:bg-accent hover:text-accent-foreground transition-all"
+                  onClick={() => {
+                    const conv = conversations.find(c => c.id === selectedConversation);
+                    if (conv?.profiles.payment_qr_url) {
+                      setSelectedQrUrl(conv.profiles.payment_qr_url);
+                      setQrModalOpen(true);
+                    }
+                  }}
+                  title="View Payment QR Code"
+                >
+                  <QrCode className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="p-2 sm:p-6">
             {selectedConversation ? (
@@ -488,6 +511,27 @@ export default function Conversations() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Payment QR Code</DialogTitle>
+            <DialogDescription>
+              Scan this QR code to make a payment to{" "}
+              {selectedConversation && conversations.find(c => c.id === selectedConversation)?.profiles.username}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center p-4">
+            {selectedQrUrl && (
+              <img 
+                src={selectedQrUrl} 
+                alt="Payment QR Code" 
+                className="max-w-full h-auto rounded-lg"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
