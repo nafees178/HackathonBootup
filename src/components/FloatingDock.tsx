@@ -96,8 +96,8 @@ export function FloatingDock() {
       </div>
       
       {/* Mobile Bottom Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border">
-        <div className="flex items-center justify-around px-2 py-3 max-w-screen-sm mx-auto">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border max-[499px]:overflow-x-auto">
+        <div className="flex items-center justify-around max-[499px]:justify-start max-[499px]:min-w-max px-2 py-3 max-w-screen-sm mx-auto">
           {dockItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -105,22 +105,22 @@ export function FloatingDock() {
                 key={item.title}
                 to={item.url}
                 className={({ isActive }) =>
-                  `flex flex-col items-center justify-center gap-1 px-3 py-1 rounded-lg transition-all duration-200 ${
+                  `flex flex-col items-center justify-center gap-1 px-3 py-1 rounded-lg transition-all duration-200 max-[499px]:flex-shrink-0 ${
                     isActive ? "text-foreground" : "text-muted-foreground"
                   }`
                 }
               >
                 <Icon className="w-5 h-5" strokeWidth={2.5} />
-                <span className="text-[10px] font-medium">{item.title.split(' ')[0]}</span>
+                <span className="text-[10px] font-medium max-[499px]:whitespace-nowrap">{item.title.split(' ')[0]}</span>
               </NavLink>
             );
           })}
           <button
             onClick={handleLogout}
-            className="flex flex-col items-center justify-center gap-1 px-3 py-1 rounded-lg transition-all duration-200 text-muted-foreground"
+            className="flex flex-col items-center justify-center gap-1 px-3 py-1 rounded-lg transition-all duration-200 text-muted-foreground max-[499px]:flex-shrink-0"
           >
             <LogOut className="w-5 h-5" strokeWidth={2.5} />
-            <span className="text-[10px] font-medium">Logout</span>
+            <span className="text-[10px] font-medium max-[499px]:whitespace-nowrap">Logout</span>
           </button>
         </div>
       </div>

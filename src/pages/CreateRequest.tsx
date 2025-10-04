@@ -509,7 +509,7 @@ const CreateRequest = () => {
                     )}
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex max-[499px]:flex-col gap-3">
                     <Button 
                       type="button" 
                       variant="outline" 
