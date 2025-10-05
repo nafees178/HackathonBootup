@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User, Send, Loader2, Star, ImagePlus, X, QrCode } from "lucide-react";
+import { User, Send, Loader2, Star, ImagePlus, X, QrCode, Download } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -444,11 +444,37 @@ export default function Conversations() {
                         >
                           {msg.content.trim() && <p className="text-sm">{msg.content}</p>}
                           {msg.image_url && (
-                            <img 
-                              src={msg.image_url} 
-                              alt="Message attachment" 
-                              className="max-w-full h-auto max-h-64 rounded-lg mt-2"
-                            />
+                            <div className="relative group mt-2">
+                              <img 
+                                src={msg.image_url} 
+                                alt="Message attachment" 
+                                className="max-w-full h-auto max-h-64 rounded-lg"
+                              />
+                              <Button
+                                variant="secondary"
+                                size="icon"
+                                className="absolute top-2 right-2 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={async () => {
+                                  try {
+                                    const response = await fetch(msg.image_url!);
+                                    const blob = await response.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `message_image_${msg.id}.png`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                    document.body.removeChild(a);
+                                    toast.success("Image downloaded!");
+                                  } catch (error) {
+                                    toast.error("Failed to download image");
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
                           )}
                           <p className="text-xs opacity-70 mt-1">
                             {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
@@ -521,13 +547,40 @@ export default function Conversations() {
               {selectedConversation && conversations.find(c => c.id === selectedConversation)?.profiles.username}
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center p-4">
+          <div className="flex flex-col items-center gap-4 p-4">
             {selectedQrUrl && (
-              <img 
-                src={selectedQrUrl} 
-                alt="Payment QR Code" 
-                className="max-w-full h-auto rounded-lg"
-              />
+              <>
+                <img 
+                  src={selectedQrUrl} 
+                  alt="Payment QR Code" 
+                  className="max-w-full h-auto rounded-lg"
+                />
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const response = await fetch(selectedQrUrl);
+                      const blob = await response.blob();
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      const username = conversations.find(c => c.id === selectedConversation)?.profiles.username;
+                      a.download = `${username}_payment_qr.png`;
+                      document.body.appendChild(a);
+                      a.click();
+                      window.URL.revokeObjectURL(url);
+                      document.body.removeChild(a);
+                      toast.success("QR code downloaded!");
+                    } catch (error) {
+                      toast.error("Failed to download QR code");
+                    }
+                  }}
+                  className="w-full gap-2"
+                >
+                  <QrCode className="h-4 w-4" />
+                  Download QR Code
+                </Button>
+              </>
             )}
           </div>
         </DialogContent>
