@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, User, Star, CheckCircle, XCircle, Eye } from "lucide-react";
+import { Loader2, User, Star, CheckCircle, XCircle, Eye, MapPin, Calendar, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -39,6 +39,10 @@ interface Deal {
     seeking: string;
     has_prerequisite: boolean;
     prerequisite_description: string | null;
+    deadline: string | null;
+    pickup_location: string | null;
+    dropoff_location: string | null;
+    images: string[] | null;
   };
   requester_profile: {
     id: string;
@@ -84,7 +88,7 @@ export default function ActiveDeals() {
         .from("deals")
         .select(`
           *,
-          requests (title, description, offering, seeking, has_prerequisite, prerequisite_description),
+          requests (title, description, offering, seeking, has_prerequisite, prerequisite_description, deadline, pickup_location, dropoff_location, images),
           requester_profile:requester_id (id, username, reputation_score),
           accepter_profile:accepter_id (id, username, reputation_score)
         `)
@@ -312,6 +316,12 @@ export default function ActiveDeals() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                  {/* Description */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Description</p>
+                    <p className="text-sm">{deal.requests.description}</p>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground mb-1">
@@ -326,6 +336,64 @@ export default function ActiveDeals() {
                       <p className="font-medium">{deal.requests.seeking}</p>
                     </div>
                   </div>
+
+                  {/* Deadline */}
+                  {deal.requests.deadline && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Due:</span>
+                      <span className="font-medium">
+                        {new Date(deal.requests.deadline).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Locations */}
+                  {(deal.requests.pickup_location || deal.requests.dropoff_location) && (
+                    <div className="space-y-2">
+                      {deal.requests.pickup_location && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Pickup:</span>
+                          <span className="font-medium">{deal.requests.pickup_location}</span>
+                        </div>
+                      )}
+                      {deal.requests.dropoff_location && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Dropoff:</span>
+                          <span className="font-medium">{deal.requests.dropoff_location}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Images */}
+                  {deal.requests.images && deal.requests.images.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <ImageIcon className="h-4 w-4" />
+                        <span>Images ({deal.requests.images.length})</span>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {deal.requests.images.map((img, idx) => (
+                          <img 
+                            key={idx}
+                            src={img} 
+                            alt={`Request image ${idx + 1}`}
+                            className="h-20 w-20 object-cover rounded-lg border cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => window.open(img, '_blank')}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {deal.status === "prerequisite_pending" && deal.requests.has_prerequisite && (
                     <div className="p-4 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-4">
