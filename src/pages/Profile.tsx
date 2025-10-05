@@ -446,12 +446,36 @@ const Profile = () => {
               <DialogTitle>Payment QR Code</DialogTitle>
               <DialogDescription>Scan this QR code to make a payment</DialogDescription>
             </DialogHeader>
-            <div className="flex justify-center p-4">
+            <div className="flex flex-col items-center gap-4 p-4">
               <img 
                 src={(profile as any)?.payment_qr_url} 
                 alt="Payment QR Code" 
                 className="max-w-full h-auto rounded-lg"
               />
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const response = await fetch((profile as any)?.payment_qr_url);
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${profile.username}_payment_qr.png`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    toast.success("QR code downloaded!");
+                  } catch (error) {
+                    toast.error("Failed to download QR code");
+                  }
+                }}
+                className="w-full gap-2"
+              >
+                <QrCode className="h-4 w-4" />
+                Download QR Code
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
