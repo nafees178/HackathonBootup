@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Layout } from "@/components/Layout";
 import Index from "./pages/Index";
@@ -16,7 +16,6 @@ import Conversations from "./pages/Conversations";
 import Messages from "./pages/Messages";
 import ActiveDeals from "./pages/ActiveDeals";
 import RateDeal from "./pages/RateDeal";
-import YourRequests from "./pages/YourRequests";
 import ProfileSetup from "./pages/ProfileSetup";
 import NotFound from "./pages/NotFound";
 
@@ -41,7 +40,7 @@ const App = () => (
             <Route path="/messages" element={<Layout><Conversations /></Layout>} />
             <Route path="/messages/legacy" element={<Layout><Messages /></Layout>} />
             <Route path="/active-deals" element={<Layout><ActiveDeals /></Layout>} />
-            <Route path="/your-requests" element={<Layout><YourRequests /></Layout>} />
+            <Route path="/your-requests" element={<Navigate to="/create-request" replace />} />
             <Route path="/rate-deal/:dealId" element={<Layout><RateDeal /></Layout>} />
             <Route path="*" element={<Layout><NotFound /></Layout>} />
           </Routes>

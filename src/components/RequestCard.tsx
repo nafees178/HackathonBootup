@@ -2,7 +2,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Clock, User, ArrowRight, AlertCircle, MapPin } from "lucide-react";
+import { Clock, User, ArrowRight, AlertCircle, MapPin, Edit2, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
 
@@ -22,6 +22,9 @@ interface RequestCardProps {
   username: string;
   reputationScore: number;
   location?: string;
+  onEdit?: (requestId: string) => void;
+  onDelete?: (requestId: string) => void;
+  showActions?: boolean;
 }
 
 const requestTypeLabels: Record<string, string> = {
@@ -51,81 +54,108 @@ export const RequestCard = ({
   username,
   reputationScore,
   location,
+  onEdit,
+  onDelete,
+  showActions = false,
 }: RequestCardProps) => {
   return (
-    <Card className="card-hover border group">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-4 mb-3">
-          <CardTitle className="text-lg line-clamp-2 group-hover:text-primary transition-colors duration-200">{title}</CardTitle>
-          <Badge variant="outline">{category}</Badge>
+    <Card className="card-hover border-2 group rounded-2xl overflow-hidden">
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <Badge variant="secondary" className="text-xs mb-2 rounded-full">{category}</Badge>
+            <CardTitle className="text-base font-bold line-clamp-2 group-hover:text-primary transition-colors duration-200">
+              {title}
+            </CardTitle>
+          </div>
+          {showActions && onEdit && onDelete && (
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-xl"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onEdit(id);
+                }}
+              >
+                <Edit2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-xl text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDelete(id);
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{description}</p>
+
+        <div className="flex items-center gap-3 text-sm">
           <div 
-            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
             onClick={() => window.location.href = `/profile/${userId}`}
           >
-            <Avatar className="h-6 w-6">
-              <AvatarFallback className="text-xs">
+            <Avatar className="h-7 w-7 border-2 border-border">
+              <AvatarFallback className="text-xs bg-muted">
                 <User className="h-3 w-3" />
               </AvatarFallback>
             </Avatar>
-            <span className="font-medium">{username}</span>
+            <span className="font-medium text-foreground text-xs">{username}</span>
           </div>
-          <span className="text-xs">★ {reputationScore}</span>
+          <div className="flex items-center gap-1 bg-muted/50 px-2 py-1 rounded-full">
+            <span className="text-xs text-muted-foreground">★</span>
+            <span className="text-xs font-semibold">{reputationScore}</span>
+          </div>
         </div>
 
         {location && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-2">
             <MapPin className="h-3 w-3" />
             <span>{location}</span>
           </div>
         )}
       </CardHeader>
 
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground line-clamp-2">{description}</p>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="p-2 rounded bg-muted/50">
-            <p className="text-xs text-muted-foreground mb-1">Offering</p>
-            <p className="font-medium text-xs line-clamp-1">
-              {offering}
-              {moneyAmount && (requestType === 'money_for_skill' || requestType === 'money_for_item') && (
-                <span className="block text-primary font-bold">₹{moneyAmount}</span>
-              )}
-            </p>
-          </div>
-          <div className="p-2 rounded bg-muted/50">
-            <p className="text-xs text-muted-foreground mb-1">Seeking</p>
-            <p className="font-medium text-xs line-clamp-1">
-              {seeking}
-              {moneyAmount && (requestType === 'skill_for_money' || requestType === 'item_for_money') && (
-                <span className="block text-primary font-bold">₹{moneyAmount}</span>
-              )}
-            </p>
-          </div>
+      <CardContent className="space-y-3 pt-0">
+        <div className="p-4 rounded-xl bg-gradient-to-br from-primary/5 to-accent/5 border border-border">
+          <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">Offering</p>
+          <p className="font-bold text-base text-foreground">
+            {offering}
+          </p>
+          {moneyAmount && (
+            <div className="flex items-center gap-1 mt-2">
+              <span className="text-primary font-bold text-xl">₹{moneyAmount}</span>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="outline" className="text-[10px] rounded-full border-primary/30 bg-primary/5">
             {requestTypeLabels[requestType]}
           </Badge>
           {hasPrerequisite && (
-            <Badge variant="outline" className="gap-1 text-xs text-destructive border-destructive/20">
+            <Badge variant="outline" className="gap-1 text-[10px] rounded-full text-destructive border-destructive/30 bg-destructive/5">
               <AlertCircle className="h-3 w-3" />
               Prerequisites
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground pt-2">
+          <div className="flex items-center gap-1">
             <Clock className="h-3 w-3" />
-            <span>{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
+            <span className="text-[10px]">{formatDistanceToNow(new Date(createdAt), { addSuffix: true })}</span>
           </div>
           {deadline && (
-            <div className="flex items-center gap-1 text-xs text-destructive">
+            <div className="flex items-center gap-1 text-[10px] text-destructive">
               <AlertCircle className="h-3 w-3" />
               <span>Due: {formatDistanceToNow(new Date(deadline), { addSuffix: true })}</span>
             </div>
@@ -133,9 +163,9 @@ export const RequestCard = ({
         </div>
       </CardContent>
 
-      <CardFooter>
+      <CardFooter className="pt-4">
         <Link to={`/request/${id}`} className="w-full">
-          <Button className="w-full gap-2" size="sm">
+          <Button className="w-full gap-2 rounded-xl" size="sm">
             View Details
             <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
           </Button>

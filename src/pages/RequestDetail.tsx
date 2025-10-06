@@ -22,7 +22,8 @@ import {
   Loader2,
   MapPin,
   Calendar,
-  Trash2
+  Trash2,
+  Edit2
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -275,7 +276,34 @@ const RequestDetail = () => {
             <CardHeader className="p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row items-start justify-between gap-4 mb-4">
                 <div className="flex-1 w-full">
-                  <CardTitle className="text-xl sm:text-2xl md:text-3xl mb-2">{request.title}</CardTitle>
+                  <div className="flex items-start gap-3">
+                    <CardTitle className="text-xl sm:text-2xl md:text-3xl mb-2 flex-1">{request.title}</CardTitle>
+                    {isOwnRequest && (
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 rounded-xl"
+                          onClick={() => navigate(`/create-request?edit=${request.id}`)}
+                        >
+                          <Edit2 className="h-5 w-5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 rounded-xl text-destructive hover:text-destructive"
+                          onClick={handleDeleteRequest}
+                          disabled={deleting}
+                        >
+                          {deleting ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-5 w-5" />
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <Clock className="h-4 w-4" />
                     <span>{formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}</span>
@@ -352,32 +380,19 @@ const RequestDetail = () => {
 
               <Separator />
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-4 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Package className="h-5 w-5 text-primary" />
-                    <h4 className="font-semibold">Offering</h4>
-                  </div>
-                  <p className="text-lg">
-                    {request.offering}
-                    {request.money_amount && (request.request_type === 'money_for_skill' || request.request_type === 'money_for_item') && (
-                      <span className="block text-2xl font-bold text-primary mt-2">₹{request.money_amount}</span>
-                    )}
-                  </p>
+              <div className="p-6 rounded-xl border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+                <div className="flex items-center gap-2 mb-4">
+                  <Package className="h-6 w-6 text-primary" />
+                  <h4 className="font-bold text-xl">What I'm Offering</h4>
                 </div>
-
-                <div className="p-4 rounded-lg border">
-                  <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className="h-5 w-5 text-accent" />
-                    <h4 className="font-semibold">Seeking</h4>
+                <p className="text-lg font-medium">
+                  {request.offering}
+                </p>
+                {request.money_amount && (
+                  <div className="flex items-center gap-2 mt-3">
+                    <span className="text-3xl font-bold text-primary">₹{request.money_amount}</span>
                   </div>
-                  <p className="text-lg">
-                    {request.seeking}
-                    {request.money_amount && (request.request_type === 'skill_for_money' || request.request_type === 'item_for_money') && (
-                      <span className="block text-2xl font-bold text-primary mt-2">₹{request.money_amount}</span>
-                    )}
-                  </p>
-                </div>
+                )}
               </div>
 
               {request.has_prerequisite && request.prerequisite_description && (
@@ -490,28 +505,8 @@ const RequestDetail = () => {
               )}
 
               {isOwnRequest && (
-                <div className="space-y-3">
-                  <div className="p-3 rounded-lg bg-muted/50 text-center">
-                    <p className="text-sm text-muted-foreground">This is your request</p>
-                  </div>
-                  <Button 
-                    variant="destructive"
-                    onClick={handleDeleteRequest}
-                    disabled={deleting}
-                    className="w-full gap-2"
-                  >
-                    {deleting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Deleting...
-                      </>
-                    ) : (
-                      <>
-                        <Trash2 className="h-4 w-4" />
-                        Delete Request
-                      </>
-                    )}
-                  </Button>
+                <div className="p-3 rounded-lg bg-muted/50 text-center">
+                  <p className="text-sm text-muted-foreground">This is your request</p>
                 </div>
               )}
             </CardContent>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Loader2, Package, HelpCircle, Eye, ArrowLeft, Upload, X, MapPin, Calendar } from "lucide-react";
+import { Loader2, Package, HelpCircle, Eye, ArrowLeft, Upload, X, MapPin, Calendar, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RequestCard } from "@/components/RequestCard";
 
 const categories = [
-  "Design", "Development", "Marketing", "Writing", "Tutoring", 
-  "Music", "Video", "Photography", "Consulting", "Other"
+  "Bring Items", "Exchange Items", "Help/Service", "Transportation",
+  "Tutoring/Teaching", "Physical Tasks", "Errands", "Food Delivery",
+  "Shopping", "Moving/Shifting", "Pet Care", "Event Help", "Other"
 ];
 
 const CreateRequest = () => {
@@ -25,14 +27,17 @@ const CreateRequest = () => {
   const [activeTab, setActiveTab] = useState("form");
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     requestType: "skill_for_skill",
     offering: "",
-    seeking: "",
     moneyAmount: "",
     category: "",
     hasPrerequisite: false,
@@ -53,6 +58,124 @@ const CreateRequest = () => {
       }
     });
   }, [navigate]);
+
+  useEffect(() => {
+    if (userId && activeTab === "your-requests") {
+      fetchYourRequests();
+    }
+  }, [userId, activeTab]);
+
+  // Handle edit query parameter
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (editId && userId) {
+      loadRequestForEdit(editId);
+    }
+  }, [searchParams, userId]);
+
+  const loadRequestForEdit = async (requestId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("requests")
+        .select("*")
+        .eq("id", requestId)
+        .eq("user_id", userId)
+        .single();
+
+      if (error) throw error;
+      if (!data) {
+        toast.error("Request not found");
+        return;
+      }
+
+      setFormData({
+        title: data.title,
+        description: data.description,
+        requestType: data.request_type as any,
+        offering: data.offering,
+        moneyAmount: data.money_amount?.toString() || "",
+        category: data.category,
+        hasPrerequisite: data.has_prerequisite,
+        prerequisiteDescription: data.prerequisite_description || "",
+        deadline: data.deadline ? new Date(data.deadline).toISOString().slice(0, 16) : "",
+        pickupLocation: data.pickup_location || "",
+        dropoffLocation: data.dropoff_location || "",
+      });
+      
+      setEditingRequestId(requestId);
+      setActiveTab("form");
+      toast.success("Loaded request for editing");
+    } catch (error) {
+      console.error("Error loading request:", error);
+      toast.error("Failed to load request");
+    }
+  };
+
+  const fetchYourRequests = async () => {
+    if (!userId) return;
+
+    setLoadingRequests(true);
+    try {
+      const { data, error } = await supabase
+        .from("requests")
+        .select(`
+          *,
+          profiles (id, username, reputation_score, location)
+        `)
+        .eq("user_id", userId)
+        .eq("status", "open")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setRequests(data || []);
+    } catch (error) {
+      console.error("Error fetching your requests:", error);
+    } finally {
+      setLoadingRequests(false);
+    }
+  };
+
+  const handleEdit = async (requestId: string) => {
+    const request = requests.find(r => r.id === requestId);
+    if (!request) return;
+
+    // Populate form with request data
+    setFormData({
+      title: request.title,
+      description: request.description,
+      requestType: request.request_type as any,
+      offering: request.offering,
+      moneyAmount: request.money_amount?.toString() || "",
+      category: request.category,
+      hasPrerequisite: request.has_prerequisite,
+      prerequisiteDescription: request.prerequisite_description || "",
+      deadline: request.deadline ? new Date(request.deadline).toISOString().slice(0, 16) : "",
+      pickupLocation: request.pickup_location || "",
+      dropoffLocation: request.dropoff_location || "",
+    });
+    
+    setEditingRequestId(requestId);
+    setActiveTab("form");
+    toast.success("Editing request. Update and submit to save changes.");
+  };
+
+  const handleDelete = async (requestId: string) => {
+    if (!confirm("Are you sure you want to delete this request?")) return;
+
+    try {
+      const { error } = await supabase
+        .from("requests")
+        .delete()
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      toast.success("Request deleted successfully!");
+      fetchYourRequests();
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -125,12 +248,6 @@ const CreateRequest = () => {
       newErrors.offering = "Must be less than 500 characters";
     }
     
-    if (!formData.seeking.trim()) {
-      newErrors.seeking = "Please specify what you're seeking";
-    } else if (formData.seeking.length > 500) {
-      newErrors.seeking = "Must be less than 500 characters";
-    }
-    
     if (formData.requestType.includes("money") && (!formData.moneyAmount || parseFloat(formData.moneyAmount) <= 0)) {
       newErrors.moneyAmount = "Please enter a valid amount";
     }
@@ -153,26 +270,51 @@ const CreateRequest = () => {
     try {
       const imageUrls = await uploadImages();
 
-      const { error } = await supabase.from("requests").insert([{
-        user_id: userId,
-        title: formData.title,
-        description: formData.description,
-        request_type: formData.requestType,
-        offering: formData.offering,
-        seeking: formData.seeking,
-        money_amount: formData.moneyAmount ? parseFloat(formData.moneyAmount) : null,
-        category: formData.category,
-        has_prerequisite: formData.hasPrerequisite,
-        prerequisite_description: formData.hasPrerequisite ? formData.prerequisiteDescription : null,
-        deadline: formData.deadline || null,
-        images: imageUrls.length > 0 ? imageUrls : null,
-        pickup_location: formData.pickupLocation || null,
-        dropoff_location: formData.dropoffLocation || null,
-      }] as any);
+      if (editingRequestId) {
+        // Update existing request
+        const { error } = await supabase
+          .from("requests")
+          .update({
+            title: formData.title,
+            description: formData.description,
+            request_type: formData.requestType as any,
+            offering: formData.offering,
+            seeking: formData.title,
+            money_amount: formData.moneyAmount ? parseFloat(formData.moneyAmount) : null,
+            category: formData.category,
+            has_prerequisite: formData.hasPrerequisite,
+            prerequisite_description: formData.hasPrerequisite ? formData.prerequisiteDescription : null,
+            deadline: formData.deadline || null,
+            images: imageUrls.length > 0 ? imageUrls : null,
+            pickup_location: formData.pickupLocation || null,
+            dropoff_location: formData.dropoffLocation || null,
+          })
+          .eq("id", editingRequestId);
 
-      if (error) throw error;
+        if (error) throw error;
+        toast.success("Request updated successfully!");
+      } else {
+        // Create new request
+        const { error } = await supabase.from("requests").insert([{
+          user_id: userId,
+          title: formData.title,
+          description: formData.description,
+          request_type: formData.requestType,
+          offering: formData.offering,
+          seeking: formData.title,
+          money_amount: formData.moneyAmount ? parseFloat(formData.moneyAmount) : null,
+          category: formData.category,
+          has_prerequisite: formData.hasPrerequisite,
+          prerequisite_description: formData.hasPrerequisite ? formData.prerequisiteDescription : null,
+          deadline: formData.deadline || null,
+          images: imageUrls.length > 0 ? imageUrls : null,
+          pickup_location: formData.pickupLocation || null,
+          dropoff_location: formData.dropoffLocation || null,
+        }] as any);
 
-      toast.success("Request posted successfully!");
+        if (error) throw error;
+        toast.success("Request posted successfully!");
+      }
       
       // Reset form
       setFormData({
@@ -180,7 +322,6 @@ const CreateRequest = () => {
         description: "",
         requestType: "skill_for_skill",
         offering: "",
-        seeking: "",
         moneyAmount: "",
         category: "",
         hasPrerequisite: false,
@@ -190,8 +331,9 @@ const CreateRequest = () => {
         dropoffLocation: "",
       });
       setImageFiles([]);
+      setEditingRequestId(null);
       
-      navigate("/marketplace");
+      setActiveTab("your-requests");
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -223,13 +365,14 @@ const CreateRequest = () => {
         </Button>
 
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Post a Request</h1>
-          <p className="text-muted-foreground">Create a detailed request to find the perfect match</p>
+          <h1 className="text-4xl font-bold mb-2">Requests</h1>
+          <p className="text-muted-foreground">Post new requests or manage your existing ones</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
-            <TabsTrigger value="form">Create Request</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="form">Post Request</TabsTrigger>
+            <TabsTrigger value="your-requests">Your Requests</TabsTrigger>
             <TabsTrigger value="preview">Preview</TabsTrigger>
           </TabsList>
 
@@ -241,8 +384,12 @@ const CreateRequest = () => {
                     <Package className="h-6 w-6 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-2xl">Request Details</CardTitle>
-                    <CardDescription>Fill in all required information carefully</CardDescription>
+                    <CardTitle className="text-2xl">
+                      {editingRequestId ? "Edit Request" : "Request Details"}
+                    </CardTitle>
+                    <CardDescription>
+                      {editingRequestId ? "Update your request information" : "Fill in all required information carefully"}
+                    </CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -250,111 +397,47 @@ const CreateRequest = () => {
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="title">Request Title *</Label>
+                    <Label htmlFor="title">What do you need? *</Label>
                     <Input
                       id="title"
-                      placeholder="e.g., Need website design for my startup"
+                      placeholder="e.g., Someone to buy me lunch from canteen"
                       value={formData.title}
                       onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                      className={errors.title ? "border-destructive" : ""}
+                      className={errors.title ? "border-destructive rounded-xl" : "rounded-xl"}
                       required
                     />
                     {errors.title && <p className="text-sm text-destructive">{errors.title}</p>}
-                    <p className="text-xs text-muted-foreground">
-                      {formData.title.length}/200 characters
-                    </p>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Detailed Description *</Label>
-                    <Textarea
-                      id="description"
-                      placeholder="Provide comprehensive details about what you need, expected timeline, deliverables, etc."
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className={errors.description ? "border-destructive" : ""}
-                      rows={6}
-                      required
-                    />
-                    {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
-                    <p className="text-xs text-muted-foreground">
-                      {formData.description.length}/2000 characters
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="deadline">Deadline (Optional)</Label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="deadline"
-                        type="datetime-local"
-                        value={formData.deadline}
-                        onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                        className="pl-10"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Set a deadline for when you need this completed
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="images">Images (Optional)</Label>
-                    <div className="border-2 border-dashed rounded-lg p-4">
-                      <Input
-                        id="images"
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={handleImageUpload}
-                        className="hidden"
-                      />
-                      <Label
-                        htmlFor="images"
-                        className="flex flex-col items-center justify-center cursor-pointer gap-2"
-                      >
-                        <Upload className="h-8 w-8 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
-                          Click to upload images (max 5)
-                        </span>
-                      </Label>
-                    </div>
-                    {imageFiles.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2 mt-2">
-                        {imageFiles.map((file, index) => (
-                          <div key={index} className="relative group">
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt={`Preview ${index + 1}`}
-                              className="w-full h-24 object-cover rounded"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => removeImage(index)}
-                              className="absolute top-1 right-1 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="category">Category *</Label>
+                      <Select
+                        value={formData.category}
+                        onValueChange={(value) => setFormData({ ...formData, category: value })}
+                      >
+                        <SelectTrigger className={errors.category ? "border-destructive rounded-xl" : "rounded-xl"}>
+                          <SelectValue placeholder="Pick a category" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          {categories.map((cat) => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.category && <p className="text-sm text-destructive">{errors.category}</p>}
+                    </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="requestType">Exchange Type *</Label>
                       <Select
                         value={formData.requestType}
                         onValueChange={(value) => setFormData({ ...formData, requestType: value })}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-xl">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl">
                           <SelectItem value="skill_for_skill">Skill ↔ Skill</SelectItem>
                           <SelectItem value="skill_for_item">Skill ↔ Item</SelectItem>
                           <SelectItem value="skill_for_money">Skill ↔ Money</SelectItem>
@@ -366,60 +449,19 @@ const CreateRequest = () => {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Category *</Label>
-                      <Select
-                        value={formData.category}
-                        onValueChange={(value) => setFormData({ ...formData, category: value })}
-                      >
-                        <SelectTrigger className={errors.category ? "border-destructive" : ""}>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {errors.category && <p className="text-sm text-destructive">{errors.category}</p>}
-                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="offering">What You're Offering *</Label>
-                      <Input
-                        id="offering"
-                        placeholder="e.g., React tutoring (2 hours)"
-                        value={formData.offering}
-                        onChange={(e) => setFormData({ ...formData, offering: e.target.value })}
-                        className={errors.offering ? "border-destructive" : ""}
-                        required
-                      />
-                      {errors.offering && <p className="text-sm text-destructive">{errors.offering}</p>}
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <HelpCircle className="h-3 w-3" />
-                        Be specific about time, quality, or quantity
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="seeking">What You're Seeking *</Label>
-                      <Input
-                        id="seeking"
-                        placeholder="e.g., Professional logo design"
-                        value={formData.seeking}
-                        onChange={(e) => setFormData({ ...formData, seeking: e.target.value })}
-                        className={errors.seeking ? "border-destructive" : ""}
-                        required
-                      />
-                      {errors.seeking && <p className="text-sm text-destructive">{errors.seeking}</p>}
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <HelpCircle className="h-3 w-3" />
-                        Describe exactly what you need
-                      </p>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="offering">What are you offering? *</Label>
+                    <Input
+                      id="offering"
+                      placeholder="e.g., I'll write your assignment OR ₹150"
+                      value={formData.offering}
+                      onChange={(e) => setFormData({ ...formData, offering: e.target.value })}
+                      className={errors.offering ? "border-destructive rounded-xl" : "rounded-xl"}
+                      required
+                    />
+                    {errors.offering && <p className="text-sm text-destructive">{errors.offering}</p>}
                   </div>
 
                   {formData.requestType.includes("money") && (
@@ -428,88 +470,135 @@ const CreateRequest = () => {
                       <Input
                         id="moneyAmount"
                         type="number"
-                        placeholder="500"
+                        placeholder="150"
                         value={formData.moneyAmount}
                         onChange={(e) => setFormData({ ...formData, moneyAmount: e.target.value })}
-                        className={errors.moneyAmount ? "border-destructive" : ""}
+                        className={errors.moneyAmount ? "border-destructive rounded-xl" : "rounded-xl"}
                       />
                       {errors.moneyAmount && <p className="text-sm text-destructive">{errors.moneyAmount}</p>}
                     </div>
                   )}
 
-                  <Separator />
-
-                  <div className="space-y-4 p-4 rounded-lg bg-muted/30 border">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="hasPrerequisite"
-                        checked={formData.hasPrerequisite}
-                        onCheckedChange={(checked) =>
-                          setFormData({ ...formData, hasPrerequisite: checked as boolean })
-                        }
-                      />
-                      <Label htmlFor="hasPrerequisite" className="cursor-pointer font-medium">
-                        This request has prerequisites
-                      </Label>
-                    </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Details *</Label>
+                    <Textarea
+                      id="description"
+                      placeholder="Tell more about what you need... e.g., Need it by 3pm today, will pay after delivery"
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      className={errors.description ? "border-destructive rounded-xl" : "rounded-xl"}
+                      rows={3}
+                      required
+                    />
+                    {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
                     <p className="text-xs text-muted-foreground">
-                      Prerequisites are conditions that must be met before work can begin
+                      {formData.description.length}/2000 characters
                     </p>
-
-                    {formData.hasPrerequisite && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="prerequisiteDescription">Prerequisite Description *</Label>
-                          <Textarea
-                            id="prerequisiteDescription"
-                            placeholder="e.g., Must provide project files, assets, and content outline before starting design work"
-                            value={formData.prerequisiteDescription}
-                            onChange={(e) =>
-                              setFormData({ ...formData, prerequisiteDescription: e.target.value })
-                            }
-                            className={errors.prerequisiteDescription ? "border-destructive" : ""}
-                            rows={3}
-                            required={formData.hasPrerequisite}
-                          />
-                          {errors.prerequisiteDescription && (
-                            <p className="text-sm text-destructive">{errors.prerequisiteDescription}</p>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="pickupLocation">Pickup Location (Optional)</Label>
-                            <div className="relative">
-                              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="pickupLocation"
-                                placeholder="e.g., 123 Main St, City"
-                                value={formData.pickupLocation}
-                                onChange={(e) => setFormData({ ...formData, pickupLocation: e.target.value })}
-                                className="pl-10"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="dropoffLocation">Dropoff Location (Optional)</Label>
-                            <div className="relative">
-                              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                              <Input
-                                id="dropoffLocation"
-                                placeholder="e.g., 456 Oak Ave, City"
-                                value={formData.dropoffLocation}
-                                onChange={(e) => setFormData({ ...formData, dropoffLocation: e.target.value })}
-                                className="pl-10"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
                   </div>
 
+                  <details className="group">
+                    <summary className="cursor-pointer font-medium text-sm flex items-center justify-between p-3 bg-muted/30 rounded-xl">
+                      <span>⚙️ Advanced Options</span>
+                      <span className="text-xs text-muted-foreground group-open:rotate-180 transition-transform">▼</span>
+                    </summary>
+                    <div className="mt-4 space-y-4 p-4 border rounded-xl">
+                      <div className="space-y-2">
+                        <Label htmlFor="deadline">Deadline (Optional)</Label>
+                        <Input
+                          id="deadline"
+                          type="datetime-local"
+                          value={formData.deadline}
+                          onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                          className="rounded-xl"
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="hasPrerequisite"
+                          checked={formData.hasPrerequisite}
+                          onCheckedChange={(checked) =>
+                            setFormData({ ...formData, hasPrerequisite: checked as boolean })
+                          }
+                        />
+                        <Label htmlFor="hasPrerequisite" className="cursor-pointer text-sm">
+                          Has prerequisites (conditions before starting)
+                        </Label>
+                      </div>
+
+                      {formData.hasPrerequisite && (
+                        <Textarea
+                          placeholder="What needs to be done first?"
+                          value={formData.prerequisiteDescription}
+                          onChange={(e) =>
+                            setFormData({ ...formData, prerequisiteDescription: e.target.value })
+                          }
+                          className="rounded-xl"
+                          rows={2}
+                        />
+                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="images">Images (Optional, max 5)</Label>
+                        <Input
+                          id="images"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                          className="rounded-xl"
+                        />
+                        {imageFiles.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2 mt-2">
+                            {imageFiles.map((file, index) => (
+                              <div key={index} className="relative group">
+                                <img
+                                  src={URL.createObjectURL(file)}
+                                  alt={`Preview ${index + 1}`}
+                                  className="w-full h-20 object-cover rounded-lg"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeImage(index)}
+                                  className="absolute top-1 right-1 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </details>
+
                   <div className="flex max-[499px]:flex-col gap-3">
+                    {editingRequestId && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingRequestId(null);
+                          setFormData({
+                            title: "",
+                            description: "",
+                            requestType: "skill_for_skill",
+                            offering: "",
+                            moneyAmount: "",
+                            category: "",
+                            hasPrerequisite: false,
+                            prerequisiteDescription: "",
+                            deadline: "",
+                            pickupLocation: "",
+                            dropoffLocation: "",
+                          });
+                          setImageFiles([]);
+                          setActiveTab("your-requests");
+                        }}
+                      >
+                        Cancel Edit
+                      </Button>
+                    )}
                     <Button 
                       type="button" 
                       variant="outline" 
@@ -521,12 +610,71 @@ const CreateRequest = () => {
                     </Button>
                     <Button type="submit" className="flex-1" size="lg" disabled={loading || uploadingImages}>
                       {(loading || uploadingImages) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Post Request
+                      {editingRequestId ? "Update Request" : "Post Request"}
                     </Button>
                   </div>
                 </form>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="your-requests">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold">Your Requests</h2>
+                <p className="text-sm text-muted-foreground">Manage your posted requests</p>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => fetchYourRequests()}
+                disabled={loadingRequests}
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingRequests ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+            {loadingRequests ? (
+              <div className="flex items-center justify-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : requests.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6 text-center">
+                  <p className="text-muted-foreground">You haven't posted any requests yet</p>
+                  <Button 
+                    className="mt-4" 
+                    onClick={() => setActiveTab("form")}
+                  >
+                    Create Your First Request
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {requests.map((request) => (
+                  <RequestCard
+                    key={request.id}
+                    id={request.id}
+                    title={request.title}
+                    description={request.description}
+                    requestType={request.request_type}
+                    offering={request.offering}
+                    seeking={request.seeking}
+                    moneyAmount={request.money_amount}
+                    category={request.category}
+                    hasPrerequisite={request.has_prerequisite}
+                    createdAt={request.created_at}
+                    userId={request.profiles.id}
+                    username={request.profiles.username}
+                    reputationScore={request.profiles.reputation_score}
+                    location={request.profiles.location}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    showActions={true}
+                  />
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="preview">
@@ -567,19 +715,12 @@ const CreateRequest = () => {
 
                 <Separator />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-4 rounded-lg border">
-                    <h4 className="font-semibold mb-2">Offering</h4>
-                    <p className="text-lg">{formData.offering || "What you're offering"}</p>
-                  </div>
-
-                  <div className="p-4 rounded-lg border">
-                    <h4 className="font-semibold mb-2">Seeking</h4>
-                    <p className="text-lg">{formData.seeking || "What you're seeking"}</p>
-                    {formData.moneyAmount && (
-                      <p className="text-2xl font-bold text-accent mt-2">₹{formData.moneyAmount}</p>
-                    )}
-                  </div>
+                <div className="p-4 rounded-lg border">
+                  <h4 className="font-semibold mb-2">Offering</h4>
+                  <p className="text-lg">{formData.offering || "What you're offering"}</p>
+                  {formData.moneyAmount && (
+                    <p className="text-2xl font-bold text-accent mt-2">₹{formData.moneyAmount}</p>
+                  )}
                 </div>
 
                 {formData.hasPrerequisite && formData.prerequisiteDescription && (

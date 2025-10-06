@@ -89,7 +89,7 @@ export default function ProfileSetup() {
               <Label htmlFor="bio">Bio *</Label>
               <Textarea
                 id="bio"
-                placeholder="Tell others about yourself, your skills, and what you're looking for..."
+                placeholder="e.g., 2nd year CSE student, love coding and gaming. Looking to exchange skills and help others!"
                 value={formData.bio}
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                 rows={4}
@@ -98,10 +98,10 @@ export default function ProfileSetup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="location">Location *</Label>
+              <Label htmlFor="location">Location/College *</Label>
               <Input
                 id="location"
-                placeholder="City, Country"
+                placeholder="e.g., Mumbai, IIT Bombay"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                 required

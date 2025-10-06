@@ -265,11 +265,14 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          branch: string | null
+          college_year: string | null
           completed_deals: number | null
           created_at: string | null
-          education: string | null
           full_name: string | null
+          gender: string | null
           github: string | null
+          hostel: string | null
           id: string
           linkedin: string | null
           location: string | null
@@ -283,16 +286,18 @@ export type Database = {
           updated_at: string | null
           username: string
           website: string | null
-          work_experience: string | null
         }
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          branch?: string | null
+          college_year?: string | null
           completed_deals?: number | null
           created_at?: string | null
-          education?: string | null
           full_name?: string | null
+          gender?: string | null
           github?: string | null
+          hostel?: string | null
           id: string
           linkedin?: string | null
           location?: string | null
@@ -306,16 +311,18 @@ export type Database = {
           updated_at?: string | null
           username: string
           website?: string | null
-          work_experience?: string | null
         }
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          branch?: string | null
+          college_year?: string | null
           completed_deals?: number | null
           created_at?: string | null
-          education?: string | null
           full_name?: string | null
+          gender?: string | null
           github?: string | null
+          hostel?: string | null
           id?: string
           linkedin?: string | null
           location?: string | null
@@ -329,7 +336,6 @@ export type Database = {
           updated_at?: string | null
           username?: string
           website?: string | null
-          work_experience?: string | null
         }
         Relationships: []
       }

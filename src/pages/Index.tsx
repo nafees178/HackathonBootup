@@ -5,7 +5,7 @@ import { RequestCard } from "@/components/RequestCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, TrendingUp, MessageSquare, User, Star, CheckCircle, Award, ArrowRight, ListChecks, FileText } from "lucide-react";
+import { Plus, TrendingUp, MessageSquare, User, Star, CheckCircle, Award, ArrowRight, ListChecks, ClipboardList, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Request {
@@ -38,6 +38,7 @@ const Index = () => {
   const [recentRequests, setRecentRequests] = useState<Request[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -77,7 +78,10 @@ const Index = () => {
     };
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    
     try {
       const { data: { session } } = await supabase.auth.getSession();
       setUserId(session?.user?.id || null);
@@ -111,6 +115,7 @@ const Index = () => {
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -128,174 +133,193 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 md:px-6 py-4 md:py-8">
-        {/* Hero Section */}
-        <div className="mb-8 md:mb-12">
-          <div className="flex items-center justify-between mb-4 md:mb-6 gap-4">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 text-foreground truncate">
-                Welcome {userProfile ? `back, ${userProfile.username}` : "to Tit4Tat"}!
+      {/* Hero Banner */}
+      <div className="bg-gradient-to-br from-primary/5 via-accent/10 to-secondary/5 border-b">
+        <div className="container mx-auto px-4 py-8 md:py-12">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex-1 text-center md:text-left">
+              <h1 className="text-3xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                {userProfile ? `Welcome back, ${userProfile.username}!` : "Welcome to Tit4Tat"}
               </h1>
-              <p className="text-sm md:text-lg lg:text-xl text-muted-foreground">
-                Your marketplace for skill and item exchanges
+              <p className="text-base md:text-xl text-muted-foreground mb-6">
+                Exchange skills, items & services in your community
               </p>
+              <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                <Link to="/create-request">
+                  <Button size="lg" className="rounded-full gap-2 shadow-lg">
+                    <Plus className="h-5 w-5" />
+                    Post Request
+                  </Button>
+                </Link>
+                <Link to="/marketplace">
+                  <Button size="lg" variant="outline" className="rounded-full gap-2">
+                    Browse Marketplace
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
             </div>
+            
             {userProfile && (
-              <Link to="/profile" className="flex-shrink-0">
-                <Avatar className="h-12 w-12 md:h-16 md:w-16 border-2 border-border cursor-pointer hover:border-primary transition-all duration-200">
-                  <AvatarFallback className="text-base md:text-xl bg-muted">
-                    <User className="h-6 w-6 md:h-8 md:w-8" />
-                  </AvatarFallback>
-                </Avatar>
+              <Link to="/profile" className="hidden md:block">
+                <Card className="p-6 border-2 hover:border-primary transition-all duration-200 cursor-pointer">
+                  <div className="flex flex-col items-center gap-4">
+                    <Avatar className="h-20 w-20 border-4 border-border">
+                      <AvatarFallback className="text-2xl bg-muted">
+                        <User className="h-10 w-10" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-center">
+                      <p className="font-bold text-lg">{userProfile.username}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-1 bg-yellow-500/10 px-3 py-1 rounded-full">
+                          <Star className="h-4 w-4 text-yellow-500" />
+                          <span className="font-bold">{userProfile.reputation_score}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
               </Link>
             )}
           </div>
+        </div>
+      </div>
 
-          {/* Quick Actions */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4 mb-6 md:mb-8">
-            <Link to="/create-request" className="block">
-              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
-                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
-                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
-                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-foreground flex items-center justify-center flex-shrink-0">
-                      <Plus className="h-5 w-5 md:h-6 md:w-6 text-background" strokeWidth={2.5} />
-                    </div>
-                    <div className="min-w-0 text-center md:text-left">
-                      <h3 className="font-semibold text-sm md:text-base">Post</h3>
-                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Share what you need</p>
-                    </div>
+      <div className="container mx-auto px-4 py-8">
+        {/* Quick Actions Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Link to="/create-request">
+            <Card className="card-hover border-2 cursor-pointer h-full group">
+              <CardContent className="p-6 text-center">
+                <div className="h-16 w-16 rounded-2xl bg-foreground mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Plus className="h-8 w-8 text-background" strokeWidth={2.5} />
+                </div>
+                <h3 className="font-bold mb-1">Post Request</h3>
+                <p className="text-xs text-muted-foreground">Share your needs</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/marketplace">
+            <Card className="card-hover border-2 cursor-pointer h-full group">
+              <CardContent className="p-6 text-center">
+                <div className="h-16 w-16 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <TrendingUp className="h-8 w-8 text-foreground" strokeWidth={2.5} />
+                </div>
+                <h3 className="font-bold mb-1">Browse Market</h3>
+                <p className="text-xs text-muted-foreground">Find opportunities</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/active-deals">
+            <Card className="card-hover border-2 cursor-pointer h-full group">
+              <CardContent className="p-6 text-center">
+                <div className="h-16 w-16 rounded-2xl bg-success/20 mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <ListChecks className="h-8 w-8 text-success" strokeWidth={2.5} />
+                </div>
+                <h3 className="font-bold mb-1">Active Deals</h3>
+                <p className="text-xs text-muted-foreground">Track progress</p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/messages">
+            <Card className="card-hover border-2 cursor-pointer h-full group">
+              <CardContent className="p-6 text-center">
+                <div className="h-16 w-16 rounded-2xl bg-muted mx-auto mb-4 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <MessageSquare className="h-8 w-8 text-foreground" strokeWidth={2.5} />
+                </div>
+                <h3 className="font-bold mb-1">Messages</h3>
+                <p className="text-xs text-muted-foreground">Chat with users</p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+
+        {/* Stats Dashboard - Only show if logged in */}
+        {userProfile && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Card className="border-2 overflow-hidden group hover:border-primary transition-all duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Reputation Score</p>
+                    <p className="text-3xl font-bold">{userProfile.reputation_score}</p>
                   </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link to="/your-requests" className="block">
-              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
-                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
-                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
-                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <FileText className="h-5 w-5 md:h-6 md:w-6 text-foreground" strokeWidth={2.5} />
-                    </div>
-                    <div className="min-w-0 text-center md:text-left">
-                      <h3 className="font-semibold text-sm md:text-base">Requests</h3>
-                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">View your posts</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link to="/marketplace" className="block">
-              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
-                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
-                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
-                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-foreground" strokeWidth={2.5} />
-                    </div>
-                    <div className="min-w-0 text-center md:text-left">
-                      <h3 className="font-semibold text-sm md:text-base">Market</h3>
-                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Find opportunities</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link to="/active-deals" className="block">
-              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
-                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
-                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
-                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-success/20 flex items-center justify-center flex-shrink-0">
-                      <ListChecks className="h-5 w-5 md:h-6 md:w-6 text-success" strokeWidth={2.5} />
-                    </div>
-                    <div className="min-w-0 text-center md:text-left">
-                      <h3 className="font-semibold text-sm md:text-base">Deals</h3>
-                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Track your tasks</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-
-            <Link to="/messages" className="block">
-              <Card className="card-hover cursor-pointer border hover:border-primary h-full">
-                <CardContent className="pt-4 pb-4 md:pt-6 md:pb-6 px-3 md:px-6">
-                  <div className="flex flex-col md:flex-row items-center md:items-start gap-2 md:gap-3">
-                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <MessageSquare className="h-5 w-5 md:h-6 md:w-6 text-foreground" strokeWidth={2.5} />
-                    </div>
-                    <div className="min-w-0 text-center md:text-left">
-                      <h3 className="font-semibold text-sm md:text-base">Messages</h3>
-                      <p className="text-[10px] md:text-xs text-muted-foreground hidden md:block">Check conversations</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
-          </div>
-
-          {/* User Stats */}
-          {userProfile && (
-            <Card className="mb-6 md:mb-8 border-2">
-              <CardHeader className="pb-3 md:pb-6">
-                <CardTitle className="flex items-center gap-2 text-lg md:text-xl">
-                  <Award className="h-4 w-4 md:h-5 md:w-5" />
-                  Your Performance
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="grid grid-cols-3 gap-3 md:gap-6">
-                  <div className="text-center">
-                    <div className="flex flex-col items-center gap-1 md:gap-2 mb-1 md:mb-2">
-                      <Star className="h-5 w-5 md:h-6 md:w-6 text-yellow-500" />
-                      <span className="text-2xl md:text-4xl font-bold">{userProfile.reputation_score}</span>
-                    </div>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">Reputation</p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="flex flex-col items-center gap-1 md:gap-2 mb-1 md:mb-2">
-                      <CheckCircle className="h-5 w-5 md:h-6 md:w-6 text-success" />
-                      <span className="text-2xl md:text-4xl font-bold">{userProfile.completed_deals}</span>
-                    </div>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">Completed</p>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="flex flex-col items-center gap-1 md:gap-2 mb-1 md:mb-2">
-                      <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-foreground" />
-                      <span className="text-2xl md:text-4xl font-bold">{completionRate}%</span>
-                    </div>
-                    <p className="text-[10px] md:text-sm text-muted-foreground">Success Rate</p>
+                  <div className="h-14 w-14 rounded-2xl bg-yellow-500/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Star className="h-7 w-7 text-yellow-500" />
                   </div>
                 </div>
               </CardContent>
             </Card>
-          )}
-        </div>
 
-        {/* Recent Requests */}
-        <div className="mb-8 md:mb-12">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 md:mb-6 gap-3">
+            <Card className="border-2 overflow-hidden group hover:border-primary transition-all duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Completed Deals</p>
+                    <p className="text-3xl font-bold">{userProfile.completed_deals}</p>
+                  </div>
+                  <div className="h-14 w-14 rounded-2xl bg-success/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <CheckCircle className="h-7 w-7 text-success" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-2 overflow-hidden group hover:border-primary transition-all duration-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Success Rate</p>
+                    <p className="text-3xl font-bold">{completionRate}%</p>
+                  </div>
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <TrendingUp className="h-7 w-7 text-primary" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Recent Requests Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2">Recent Requests</h2>
-              <p className="text-xs md:text-sm text-muted-foreground">Fresh opportunities • Live Updates ✨</p>
+              <h2 className="text-2xl md:text-3xl font-bold mb-2">Recent Requests</h2>
+              <p className="text-sm text-muted-foreground">Fresh opportunities from the community</p>
             </div>
-            <Link to="/marketplace">
-              <Button variant="outline" className="gap-2 text-sm md:text-base">
-                View All <ArrowRight className="h-3 w-3 md:h-4 md:w-4" />
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => fetchData(true)}
+                disabled={refreshing}
+                className="rounded-xl"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
               </Button>
-            </Link>
+              <Link to="/marketplace">
+                <Button variant="outline" className="gap-2 rounded-xl">
+                  View All <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {recentRequests.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No requests yet</h3>
+            <Card className="border-2">
+              <CardContent className="py-16 text-center">
+                <div className="bg-muted/30 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <TrendingUp className="h-10 w-10 text-muted-foreground" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">No requests yet</h3>
                 <p className="text-muted-foreground mb-6">Be the first to post a request!</p>
                 <Link to="/create-request">
-                  <Button className="gap-2">
+                  <Button className="gap-2 rounded-full">
                     <Plus className="h-5 w-5" />
                     Post a Request
                   </Button>
@@ -303,7 +327,7 @@ const Index = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {recentRequests.map((request) => (
                 <RequestCard
                   key={request.id}
@@ -327,43 +351,54 @@ const Index = () => {
           )}
         </div>
 
-        {/* Info Section */}
-        <Card className="border-2">
-          <CardContent className="py-8 md:py-12 px-4 md:px-6">
-            <div className="text-center max-w-3xl mx-auto">
-              <h2 className="text-2xl md:text-3xl font-bold mb-3 md:mb-4">How Tit4Tat Works</h2>
-              <p className="text-sm md:text-lg text-muted-foreground mb-6 md:mb-8">
-                Exchange skills, items, or services with people in your community. Post what you need, 
-                browse what others offer, and create mutually beneficial deals.
+        {/* How It Works Section */}
+        <Card className="border-2 bg-gradient-to-br from-muted/30 to-muted/10">
+          <CardContent className="py-12 px-6">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl md:text-3xl font-bold mb-3">How Tit4Tat Works</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Simple, secure, and community-driven exchange platform
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 text-left">
-                <div>
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center mb-2 md:mb-3 mx-auto md:mx-0">
-                    <span className="text-xl md:text-2xl font-bold">1</span>
-                  </div>
-                  <h3 className="font-semibold mb-1 md:mb-2 text-center md:text-left text-sm md:text-base">Post Your Request</h3>
-                  <p className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
-                    Share what you're offering and what you're looking for
-                  </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="text-center">
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 mx-auto">
+                  <ClipboardList className="h-8 w-8 text-primary" />
                 </div>
-                <div>
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center mb-2 md:mb-3 mx-auto md:mx-0">
-                    <span className="text-xl md:text-2xl font-bold">2</span>
-                  </div>
-                  <h3 className="font-semibold mb-1 md:mb-2 text-center md:text-left text-sm md:text-base">Connect & Agree</h3>
-                  <p className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
-                    Review interested users and start a conversation
-                  </p>
+                <div className="bg-primary/5 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl font-bold text-primary">1</span>
                 </div>
-                <div>
-                  <div className="h-10 w-10 md:h-12 md:w-12 rounded-lg bg-muted flex items-center justify-center mb-2 md:mb-3 mx-auto md:mx-0">
-                    <span className="text-xl md:text-2xl font-bold">3</span>
-                  </div>
-                  <h3 className="font-semibold mb-1 md:mb-2 text-center md:text-left text-sm md:text-base">Complete & Rate</h3>
-                  <p className="text-xs md:text-sm text-muted-foreground text-center md:text-left">
-                    Exchange and build your reputation with successful deals
-                  </p>
+                <h3 className="font-bold text-lg mb-2">Post Your Request</h3>
+                <p className="text-sm text-muted-foreground">
+                  Share what you're offering and what you're looking for in the community
+                </p>
+              </div>
+
+              <div className="text-center">
+                <div className="h-16 w-16 rounded-2xl bg-accent/20 flex items-center justify-center mb-4 mx-auto">
+                  <MessageSquare className="h-8 w-8 text-foreground" />
                 </div>
+                <div className="bg-accent/20 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl font-bold">2</span>
+                </div>
+                <h3 className="font-bold text-lg mb-2">Connect & Negotiate</h3>
+                <p className="text-sm text-muted-foreground">
+                  Review interested users and start conversations to finalize details
+                </p>
+              </div>
+
+              <div className="text-center">
+                <div className="h-16 w-16 rounded-2xl bg-success/10 flex items-center justify-center mb-4 mx-auto">
+                  <CheckCircle className="h-8 w-8 text-success" />
+                </div>
+                <div className="bg-success/10 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-3">
+                  <span className="text-2xl font-bold text-success">3</span>
+                </div>
+                <h3 className="font-bold text-lg mb-2">Complete & Rate</h3>
+                <p className="text-sm text-muted-foreground">
+                  Exchange and build your reputation with successful deals
+                </p>
               </div>
             </div>
           </CardContent>

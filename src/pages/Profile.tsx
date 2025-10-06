@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { User, Star, CheckCircle, TrendingUp, Edit, MapPin, Phone, Globe, Github, Linkedin, Twitter, Briefcase, GraduationCap, QrCode, Upload, X } from "lucide-react";
+import { User, Star, CheckCircle, TrendingUp, Edit, MapPin, Phone, Globe, Github, Linkedin, Twitter, Briefcase, GraduationCap, QrCode, Upload, X, LogOut } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 
@@ -59,8 +59,10 @@ const Profile = () => {
     linkedin: "",
     twitter: "",
     portfolio_description: "",
-    work_experience: "",
-    education: "",
+    college_year: "",
+    branch: "",
+    gender: "",
+    hostel: "",
   });
   const navigate = useNavigate();
 
@@ -122,8 +124,10 @@ const Profile = () => {
         linkedin: profileData.linkedin || "",
         twitter: profileData.twitter || "",
         portfolio_description: profileData.portfolio_description || "",
-        work_experience: profileData.work_experience || "",
-        education: profileData.education || "",
+        college_year: (profileData as any).college_year || "",
+        branch: (profileData as any).branch || "",
+        gender: (profileData as any).gender || "",
+        hostel: (profileData as any).hostel || "",
       });
       setBadges(badgesData.map((b) => b.badge_type));
     } catch (error) {
@@ -218,6 +222,18 @@ const Profile = () => {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      toast.success("Logged out successfully");
+      navigate("/auth");
+    } catch (error: any) {
+      toast.error(error.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -241,16 +257,17 @@ const Profile = () => {
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between gap-2 sm:gap-4 mb-4 sm:mb-8">
+        <div className="flex items-center justify-between gap-2 mb-4 sm:mb-8">
           <h1 className="text-xl sm:text-3xl md:text-4xl font-bold">My Profile</h1>
-          <Dialog open={editing} onOpenChange={setEditing}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="gap-1 sm:gap-2 text-sm sm:text-base">
-                <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden sm:inline">Edit Profile</span>
-                <span className="sm:hidden">Edit</span>
-              </Button>
-            </DialogTrigger>
+          <div className="flex gap-2">
+            <Dialog open={editing} onOpenChange={setEditing}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-1 sm:gap-2 text-sm sm:text-base">
+                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Edit Profile</span>
+                  <span className="sm:hidden">Edit</span>
+                </Button>
+              </DialogTrigger>
             <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Edit Profile</DialogTitle>
@@ -270,6 +287,7 @@ const Profile = () => {
                     value={formData.bio}
                     onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                     rows={3}
+                    placeholder="e.g., 2nd year CSE student, love coding and cricket"
                   />
                 </div>
                 <div className="space-y-2">
@@ -277,7 +295,7 @@ const Profile = () => {
                   <Input
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                    placeholder="City, Country"
+                    placeholder="e.g., Mumbai, Maharashtra"
                   />
                 </div>
                 <div className="space-y-2">
@@ -287,6 +305,42 @@ const Profile = () => {
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="+1234567890"
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>College Year</Label>
+                    <Input
+                      value={formData.college_year}
+                      onChange={(e) => setFormData({ ...formData, college_year: e.target.value })}
+                      placeholder="e.g., 2nd Year"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Branch</Label>
+                    <Input
+                      value={formData.branch}
+                      onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
+                      placeholder="e.g., CSE"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Gender</Label>
+                    <Input
+                      value={formData.gender}
+                      onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                      placeholder="e.g., Male/Female/Other"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Hostel/Room</Label>
+                    <Input
+                      value={formData.hostel}
+                      onChange={(e) => setFormData({ ...formData, hostel: e.target.value })}
+                      placeholder="e.g., Hostel 5, Room 201"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Website</Label>
@@ -326,25 +380,7 @@ const Profile = () => {
                     value={formData.portfolio_description}
                     onChange={(e) => setFormData({ ...formData, portfolio_description: e.target.value })}
                     rows={3}
-                    placeholder="Describe your work and portfolio"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Work Experience</Label>
-                  <Textarea
-                    value={formData.work_experience}
-                    onChange={(e) => setFormData({ ...formData, work_experience: e.target.value })}
-                    rows={3}
-                    placeholder="Your professional experience"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Education</Label>
-                  <Textarea
-                    value={formData.education}
-                    onChange={(e) => setFormData({ ...formData, education: e.target.value })}
-                    rows={2}
-                    placeholder="Your educational background"
+                    placeholder="Tell about your skills and what you can do"
                   />
                 </div>
                 <div className="space-y-2">
@@ -438,6 +474,16 @@ const Profile = () => {
               </div>
             </DialogContent>
           </Dialog>
+          <Button 
+            variant="outline" 
+            className="gap-1 sm:gap-2 text-sm sm:text-base text-destructive hover:text-destructive"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Logout</span>
+            <span className="sm:hidden">Logout</span>
+          </Button>
+          </div>
         </div>
 
         <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
@@ -584,6 +630,45 @@ const Profile = () => {
           </Card>
         </div>
 
+        {((profile as any).college_year || (profile as any).branch || (profile as any).gender || (profile as any).hostel) && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GraduationCap className="h-5 w-5" />
+                College Info
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                {(profile as any).college_year && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Year</p>
+                    <p className="font-medium">{(profile as any).college_year}</p>
+                  </div>
+                )}
+                {(profile as any).branch && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Branch</p>
+                    <p className="font-medium">{(profile as any).branch}</p>
+                  </div>
+                )}
+                {(profile as any).gender && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Gender</p>
+                    <p className="font-medium">{(profile as any).gender}</p>
+                  </div>
+                )}
+                {(profile as any).hostel && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Hostel/Room</p>
+                    <p className="font-medium">{(profile as any).hostel}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {(profile as any).portfolio_description && (
           <Card className="mb-6">
             <CardHeader>
@@ -594,34 +679,6 @@ const Profile = () => {
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">{(profile as any).portfolio_description}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {(profile as any).work_experience && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5" />
-                Work Experience
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground whitespace-pre-line">{(profile as any).work_experience}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {(profile as any).education && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" />
-                Education
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground whitespace-pre-line">{(profile as any).education}</p>
             </CardContent>
           </Card>
         )}

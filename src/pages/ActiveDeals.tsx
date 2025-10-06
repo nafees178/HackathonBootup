@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, User, Star, CheckCircle, XCircle, Eye, MapPin, Calendar, Image as ImageIcon } from "lucide-react";
+import { Loader2, User, Star, CheckCircle, XCircle, Eye, MapPin, Calendar, Image as ImageIcon, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -60,6 +60,7 @@ interface Deal {
 export default function ActiveDeals() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [dealToCancel, setDealToCancel] = useState<string | null>(null);
@@ -80,8 +81,11 @@ export default function ActiveDeals() {
     setCurrentUserId(session?.user?.id || null);
   };
 
-  const fetchActiveDeals = async () => {
+  const fetchActiveDeals = async (isRefresh = false) => {
     if (!currentUserId) return;
+
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
 
     try {
       const { data, error } = await supabase
@@ -114,6 +118,7 @@ export default function ActiveDeals() {
       console.error("Error fetching active deals:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -265,7 +270,17 @@ export default function ActiveDeals() {
 
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8">Active Deals</h1>
+      <div className="flex items-center justify-between mb-4 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">Active Deals</h1>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => fetchActiveDeals(true)}
+          disabled={refreshing}
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
 
       {deals.length === 0 ? (
         <Card>

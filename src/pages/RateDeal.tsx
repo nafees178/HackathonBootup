@@ -119,7 +119,7 @@ export default function RateDeal() {
       const bothRated = existingReviews && existingReviews.length === 2;
 
       if (bothRated && deal.status !== "cancelled") {
-        // Update deal status to completed
+        // Update deal status to completed (triggers will automatically update completed_deals)
         await supabase
           .from("deals")
           .update({ 
@@ -128,40 +128,22 @@ export default function RateDeal() {
           })
           .eq("id", dealId);
 
-        // Update both users' completed_deals count and recalculate reputation
+        // Recalculate reputation for both users based on all reviews
         const profiles = [deal.requester_id, deal.accepter_id];
         for (const profileId of profiles) {
-          // Get current profile stats
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("completed_deals")
-            .eq("id", profileId)
-            .maybeSingle();
+          const { data: userReviews } = await supabase
+            .from("reviews")
+            .select("rating")
+            .eq("reviewee_id", profileId);
 
-          if (profile) {
-            // Increment completed_deals
+          if (userReviews && userReviews.length > 0) {
+            const avgRating = userReviews.reduce((sum, r) => sum + r.rating, 0) / userReviews.length;
+            const reputation = Math.round(avgRating * 20);
+            
             await supabase
               .from("profiles")
-              .update({ 
-                completed_deals: (profile.completed_deals || 0) + 1 
-              })
+              .update({ reputation_score: reputation })
               .eq("id", profileId);
-
-            // Recalculate reputation for this user based on all reviews
-            const { data: userReviews } = await supabase
-              .from("reviews")
-              .select("rating")
-              .eq("reviewee_id", profileId);
-
-            if (userReviews && userReviews.length > 0) {
-              const avgRating = userReviews.reduce((sum, r) => sum + r.rating, 0) / userReviews.length;
-              const reputation = Math.round(avgRating * 20);
-              
-              await supabase
-                .from("profiles")
-                .update({ reputation_score: reputation })
-                .eq("id", profileId);
-            }
           }
         }
 

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { User, Send, Loader2, Star, ImagePlus, X, QrCode, Download } from "lucide-react";
+import { User, Send, Loader2, Star, ImagePlus, X, QrCode, Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -48,6 +48,7 @@ export default function Conversations() {
   const [newMessage, setNewMessage] = useState("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [sending, setSending] = useState(false);
   const [ratingPrompt, setRatingPrompt] = useState<RatingPrompt | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -137,8 +138,11 @@ export default function Conversations() {
     setCurrentUserId(session?.user?.id || null);
   };
 
-  const fetchConversations = async () => {
+  const fetchConversations = async (isRefresh = false) => {
     if (!currentUserId) return;
+
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
 
     try {
       const { data, error } = await supabase
@@ -175,6 +179,7 @@ export default function Conversations() {
       console.error("Error fetching conversations:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -325,7 +330,17 @@ export default function Conversations() {
 
   return (
     <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-      <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-8">Messages</h1>
+      <div className="flex items-center justify-between mb-4 sm:mb-8">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">Messages</h1>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => fetchConversations(true)}
+          disabled={refreshing}
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="lg:col-span-1">

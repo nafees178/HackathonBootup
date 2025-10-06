@@ -1,7 +1,5 @@
-import { NavLink, useNavigate } from "react-router-dom";
-import { Home, Search, Plus, MessageSquare, User, LogOut, ListChecks, FileText } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { NavLink } from "react-router-dom";
+import { Home, Search, ClipboardList, MessageSquare, User, ListChecks } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   Tooltip,
@@ -13,34 +11,13 @@ import {
 const dockItems = [
   { title: "Dashboard", url: "/", icon: Home },
   { title: "Marketplace", url: "/marketplace", icon: Search },
-  { title: "Post Request", url: "/create-request", icon: Plus },
-  { title: "Your Requests", url: "/your-requests", icon: FileText },
+  { title: "Requests", url: "/create-request", icon: ClipboardList },
   { title: "Active Deals", url: "/active-deals", icon: ListChecks },
   { title: "Messages", url: "/messages", icon: MessageSquare },
   { title: "Profile", url: "/profile", icon: User },
 ];
 
 export function FloatingDock() {
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  const handleLogout = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      toast({
-        title: "Logged out successfully",
-      });
-      navigate("/auth");
-    } catch (error) {
-      toast({
-        title: "Error logging out",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <>
@@ -75,22 +52,6 @@ export function FloatingDock() {
                 </Tooltip>
               );
             })}
-            
-            <div className="h-px w-8 bg-border my-1 self-center" />
-            
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleLogout}
-                  className="w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 hover:scale-105 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="ml-2">
-                <p>Logout</p>
-              </TooltipContent>
-            </Tooltip>
           </div>
         </TooltipProvider>
       </div>
@@ -115,13 +76,6 @@ export function FloatingDock() {
               </NavLink>
             );
           })}
-          <button
-            onClick={handleLogout}
-            className="flex flex-col items-center justify-center gap-1 px-3 py-1 rounded-lg transition-all duration-200 text-muted-foreground max-[499px]:flex-shrink-0"
-          >
-            <LogOut className="w-5 h-5" strokeWidth={2.5} />
-            <span className="text-[10px] font-medium max-[499px]:whitespace-nowrap">Logout</span>
-          </button>
         </div>
       </div>
     </>

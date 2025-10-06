@@ -31,6 +31,7 @@ interface PendingDealsProps {
 export function PendingDeals({ requestId }: PendingDealsProps) {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,6 +71,9 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
   };
 
   const handleApprove = async (interestId: string, accepterId: string) => {
+    if (approvingId) return; // Prevent multiple clicks
+    
+    setApprovingId(interestId);
     try {
       // Get request details
       const { data: request, error: reqError } = await supabase
@@ -123,22 +127,7 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
 
       if (dealError) throw dealError;
 
-      // 3b. Increment total_deals for both users
-      const usersToUpdate = [request.user_id, accepterId];
-      for (const userId of usersToUpdate) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("total_deals")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (profile) {
-          await supabase
-            .from("profiles")
-            .update({ total_deals: (profile.total_deals || 0) + 1 })
-            .eq("id", userId);
-        }
-      }
+      // Note: total_deals is automatically updated by database triggers
 
       // 4. Check if conversation already exists, if not create one
       const { data: existingConv } = await supabase
@@ -172,6 +161,8 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
       fetchPendingDeals();
     } catch (error: any) {
       toast.error(error.message);
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -244,8 +235,13 @@ export function PendingDeals({ requestId }: PendingDealsProps) {
                 size="sm"
                 onClick={() => handleApprove(deal.id, deal.user_id)}
                 className="flex-1 gap-1"
+                disabled={approvingId !== null}
               >
-                <Check className="h-4 w-4" />
+                {approvingId === deal.id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
                 Approve
               </Button>
               <Button

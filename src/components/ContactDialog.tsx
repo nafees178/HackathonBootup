@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MessageSquare, Send, ImagePlus, X } from "lucide-react";
+import { MessageSquare, Send, FileUp, X } from "lucide-react";
 
 interface ContactDialogProps {
   receiverId: string;
@@ -18,30 +18,35 @@ interface ContactDialogProps {
 export function ContactDialog({ receiverId, receiverUsername, requestId, requestTitle }: ContactDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     subject: requestTitle ? `Regarding: ${requestTitle}` : "",
     message: "",
   });
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image must be smaller than 5MB");
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error("File must be smaller than 10MB");
         return;
       }
-      setSelectedImage(file);
-      setImagePreview(URL.createObjectURL(file));
+      setSelectedFile(file);
+      // Create preview for images only
+      if (file.type.startsWith('image/')) {
+        setFilePreview(URL.createObjectURL(file));
+      } else {
+        setFilePreview(null);
+      }
     }
   };
 
-  const removeImage = () => {
-    setSelectedImage(null);
-    if (imagePreview) {
-      URL.revokeObjectURL(imagePreview);
-      setImagePreview(null);
+  const removeFile = () => {
+    setSelectedFile(null);
+    if (filePreview) {
+      URL.revokeObjectURL(filePreview);
+      setFilePreview(null);
     }
   };
 
@@ -59,14 +64,14 @@ export function ContactDialog({ receiverId, receiverUsername, requestId, request
 
       let imageUrl = null;
 
-      // Upload image if selected
-      if (selectedImage) {
-        const fileExt = selectedImage.name.split('.').pop();
+      // Upload file if selected
+      if (selectedFile) {
+        const fileExt = selectedFile.name.split('.').pop();
         const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('message-images')
-          .upload(fileName, selectedImage);
+          .upload(fileName, selectedFile);
 
         if (uploadError) throw uploadError;
 
@@ -118,7 +123,7 @@ export function ContactDialog({ receiverId, receiverUsername, requestId, request
       toast.success("Message sent successfully!");
       setOpen(false);
       setFormData({ subject: "", message: "" });
-      removeImage();
+      removeFile();
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -164,38 +169,51 @@ export function ContactDialog({ receiverId, receiverUsername, requestId, request
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="image">Attach Image (Optional)</Label>
-            <div className="flex items-center gap-2">
+            <Label htmlFor="file">Attach File/Document (Optional)</Label>
+            <div className="space-y-2">
               <Input
-                id="image"
+                id="file"
                 type="file"
-                accept="image/*"
-                onChange={handleImageSelect}
+                accept="image/*,.pdf,.doc,.docx,.txt,.zip,.rar"
+                onChange={handleFileSelect}
                 className="hidden"
               />
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => document.getElementById('image')?.click()}
-                className="gap-2"
+                onClick={() => document.getElementById('file')?.click()}
+                className="gap-2 w-full"
               >
-                <ImagePlus className="h-4 w-4" />
-                Select Image
+                <FileUp className="h-4 w-4" />
+                {selectedFile ? "Change File" : "Select File"}
               </Button>
-              {imagePreview && (
-                <div className="relative">
-                  <img src={imagePreview} alt="Preview" className="h-16 w-16 object-cover rounded" />
+              {selectedFile && (
+                <div className="flex items-center gap-2 p-2 border rounded bg-muted/30">
+                  {filePreview ? (
+                    <img src={filePreview} alt="Preview" className="h-12 w-12 object-cover rounded" />
+                  ) : (
+                    <div className="h-12 w-12 bg-primary/10 rounded flex items-center justify-center">
+                      <FileUp className="h-6 w-6 text-primary" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{selectedFile.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(selectedFile.size / 1024).toFixed(0)} KB
+                    </p>
+                  </div>
                   <Button
                     type="button"
-                    variant="destructive"
+                    variant="ghost"
                     size="icon"
-                    className="absolute -top-2 -right-2 h-5 w-5"
-                    onClick={removeImage}
+                    className="h-8 w-8 text-destructive"
+                    onClick={removeFile}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
               )}
+              <p className="text-xs text-muted-foreground">Max 10MB. Supports images, PDFs, docs, and archives</p>
             </div>
           </div>
           <Button type="submit" className="w-full gap-2" disabled={loading}>

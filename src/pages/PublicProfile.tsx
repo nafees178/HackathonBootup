@@ -24,8 +24,10 @@ interface Profile {
   linkedin: string;
   twitter: string;
   portfolio_description: string;
-  work_experience: string;
-  education: string;
+  college_year: string;
+  branch: string;
+  gender: string;
+  hostel: string;
   skills: string[];
 }
 
@@ -244,7 +246,7 @@ const PublicProfile = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
-                Portfolio
+                About Me
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -253,30 +255,41 @@ const PublicProfile = () => {
           </Card>
         )}
 
-        {profile.work_experience && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5" />
-                Work Experience
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground whitespace-pre-line">{profile.work_experience}</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {profile.education && (
+        {((profile as any).college_year || (profile as any).branch) && (
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GraduationCap className="h-5 w-5" />
-                Education
+                College Info
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground whitespace-pre-line">{profile.education}</p>
+              <div className="grid grid-cols-2 gap-4">
+                {(profile as any).college_year && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Year</p>
+                    <p className="font-medium">{(profile as any).college_year}</p>
+                  </div>
+                )}
+                {(profile as any).branch && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Branch</p>
+                    <p className="font-medium">{(profile as any).branch}</p>
+                  </div>
+                )}
+                {(profile as any).gender && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Gender</p>
+                    <p className="font-medium">{(profile as any).gender}</p>
+                  </div>
+                )}
+                {(profile as any).hostel && (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Hostel/Room</p>
+                    <p className="font-medium">{(profile as any).hostel}</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         )}
