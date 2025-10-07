@@ -116,7 +116,7 @@ const Auth = () => {
             </div>
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-gradient mb-2">Tit4Tat</h1>
+            <h1 className="text-4xl font-bold text-gradient mb-2">ViniMay</h1>
             <CardTitle className="text-2xl font-semibold">Welcome Back</CardTitle>
             <CardDescription className="text-base">Join the marketplace where everyone wins</CardDescription>
           </div>

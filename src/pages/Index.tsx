@@ -139,7 +139,7 @@ const Index = () => {
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-3xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                {userProfile ? `Welcome back, ${userProfile.username}!` : "Welcome to Tit4Tat"}
+                {userProfile ? `Welcome back, ${userProfile.username}!` : "Welcome to ViniMay"}
               </h1>
               <p className="text-base md:text-xl text-muted-foreground mb-6">
                 Exchange skills, items & services in your community
@@ -355,7 +355,7 @@ const Index = () => {
         <Card className="border-2 bg-gradient-to-br from-muted/30 to-muted/10">
           <CardContent className="py-12 px-6">
             <div className="text-center mb-10">
-              <h2 className="text-2xl md:text-3xl font-bold mb-3">How Tit4Tat Works</h2>
+              <h2 className="text-2xl md:text-3xl font-bold mb-3">How ViniMay Works</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
                 Simple, secure, and community-driven exchange platform
               </p>

@@ -1,4 +1,4 @@
-# Tit4Tat - Skill & Item Exchange Marketplace
+# ViniMay - Skill & Item Exchange Marketplace
 
 A modern React-based marketplace application that enables users to exchange skills, items, and services with others in their community. Built with React, TypeScript, Supabase, and modern UI components.
 
@@ -264,6 +264,6 @@ This project is licensed under the MIT License.
 
 ---
 
-**Tit4Tat** - Building communities through skill and item exchanges! 🎯
+**ViniMay** - Building communities through skill and item exchanges! 🎯
 
 Made by **Nafees** 👨‍💻
