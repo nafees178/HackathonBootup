@@ -4,13 +4,43 @@ A modern React-based marketplace application that enables users to exchange skil
 
 ## 🚀 Features
 
-### Core Functionality
-- **Request Creation**: Post detailed requests for skills, items, or services you need
-- **Marketplace Browsing**: Search and filter through available requests
-- **Deal Management**: Track active deals and their progress
-- **User Profiles**: Build reputation through successful exchanges
+### Authentication & Onboarding
+Start your journey with a beautiful, modern authentication system that supports both light and dark themes.
+
+<div align="center">
+  <img src="Images/login.png" alt="Login Page" width="300"/>
+  <img src="Images/sign up.png" alt="Sign Up Page" width="300"/>
+</div>
+
+- **Secure Authentication**: Email-based signup and login with Supabase Auth
+- **Profile Setup**: Complete onboarding process to set up your profile
+- **Theme Support**: Automatic dark/light mode detection with smooth transitions
+
+### Dashboard & User Experience
+The main dashboard provides a comprehensive overview of your activity and marketplace status.
+
+<div align="center">
+  <img src="Images/Dashboard.png" alt="Dashboard Light Mode" width="300"/>
+  <img src="Images/Dashboard Dark Mode.png" alt="Dashboard Dark Mode" width="300"/>
+</div>
+
+- **Personalized Dashboard**: View your reputation score, completion rate, and recent activity
+- **Quick Actions**: Easy access to create requests, view marketplace, manage deals, and messages
 - **Real-time Updates**: Live notifications for new requests and deal updates
-- **Messaging System**: Communicate with other users about deals
+- **Performance Metrics**: Track your success rate and completed deals
+
+### Marketplace & Request Management
+Browse and create exchange requests with powerful filtering and search capabilities.
+
+<div align="center">
+  <img src="Images/Marketplace.png" alt="Marketplace" width="300"/>
+  <img src="Images/Post Requests Section.png" alt="Create Request" width="300"/>
+</div>
+
+- **Request Creation**: Post detailed requests for skills, items, or services you need
+- **Marketplace Browsing**: Search and filter through available requests by category
+- **Advanced Filtering**: Find exactly what you're looking for with smart search
+- **Request Details**: Comprehensive request forms with prerequisites, deadlines, and image uploads
 
 ### Exchange Types
 - **Skill ↔ Skill**: Exchange one skill for another
@@ -21,6 +51,19 @@ A modern React-based marketplace application that enables users to exchange skil
 - **Item ↔ Money**: Sell items for money
 - **Money ↔ Skill**: Pay for skills
 - **Money ↔ Item**: Buy items
+
+### Communication & Profile Management
+Stay connected with other users through an integrated messaging system and manage your profile effectively.
+
+<div align="center">
+  <img src="Images/Messages System.png" alt="Messages System" width="300"/>
+  <img src="Images/Profile.png" alt="Profile Management" width="300"/>
+</div>
+
+- **Messaging System**: Communicate with other users about deals
+- **Profile Management**: Build and maintain your reputation
+- **User Profiles**: View other users' profiles and reputation scores
+- **Real-time Chat**: Instant messaging for deal discussions
 
 ### Advanced Features
 - **Prerequisites System**: Set conditions that must be met before work begins
